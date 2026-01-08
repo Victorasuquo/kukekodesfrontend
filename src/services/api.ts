@@ -340,7 +340,7 @@ class APIService {
 
     const csrftoken = getCookie('csrftoken');
 
-    const response = await fetch(`${this.baseURL}/users/login/`, {
+    const response = await fetch(`${this.baseURL}/users/api/login/`, {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -361,7 +361,7 @@ class APIService {
 
     const csrftoken = getCookie('csrftoken');
 
-    const response = await fetch(`${this.baseURL}/users/register/`, {
+    const response = await fetch(`${this.baseURL}/users/api/register/`, {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -376,7 +376,7 @@ class APIService {
   async logout(): Promise<boolean> {
     const csrftoken = getCookie('csrftoken');
 
-    const response = await fetch(`${this.baseURL}/users/logout/`, {
+    const response = await fetch(`${this.baseURL}/users/api/logout/`, {
       method: 'POST',
       credentials: 'include',
       headers: {
