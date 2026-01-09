@@ -1,5 +1,7 @@
 // Django Backend API Service
-const API_BASE_URL = 'https://linkup-neon-ten.vercel.app';
+const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://localhost:8000'
+  : 'https://linkup-neon-ten.vercel.app';
 
 function getCookie(name: string): string | null {
   let cookieValue = null;

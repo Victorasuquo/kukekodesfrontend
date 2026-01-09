@@ -16,7 +16,7 @@ const navLinks = [
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isDark, setIsDark] = useState(true);
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme");
@@ -109,9 +109,16 @@ export function Navbar() {
             </Button>
 
             {user ? (
-              <Button variant="hero" size="sm" asChild>
-                <Link to="/dashboard">Dashboard</Link>
-              </Button>
+              <div className="flex items-center gap-3">
+                {isAdmin && (
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link to="/admin">Admin Dashboard</Link>
+                  </Button>
+                )}
+                <Button variant="hero" size="sm" asChild>
+                  <Link to="/dashboard">Dashboard</Link>
+                </Button>
+              </div>
             ) : (
               <>
                 <Button variant="ghost" size="sm" asChild>
