@@ -334,40 +334,40 @@ class APIService {
 
   // Auth
   async login(username: string, password: string): Promise<boolean> {
-    const formData = new FormData();
-    formData.append('username', username);
-    formData.append('password', password);
-
     const csrftoken = getCookie('csrftoken');
 
     const response = await fetch(`${this.baseURL}/users/api/login/`, {
       method: 'POST',
       credentials: 'include',
       headers: {
+        'Content-Type': 'application/json',
         'X-CSRFToken': csrftoken || '',
       },
-      body: formData,
+      body: JSON.stringify({
+        username,
+        password,
+      }),
     });
 
     return response.ok;
   }
 
   async register(username: string, email: string, password: string, passwordConfirm: string): Promise<boolean> {
-    const formData = new FormData();
-    formData.append('username', username);
-    formData.append('email', email);
-    formData.append('password', password);
-    formData.append('password_confirm', passwordConfirm);
-
     const csrftoken = getCookie('csrftoken');
 
     const response = await fetch(`${this.baseURL}/users/api/register/`, {
       method: 'POST',
       credentials: 'include',
       headers: {
+        'Content-Type': 'application/json',
         'X-CSRFToken': csrftoken || '',
       },
-      body: formData,
+      body: JSON.stringify({
+        username,
+        email,
+        password,
+        password_confirm: passwordConfirm,
+      }),
     });
 
     return response.ok;
