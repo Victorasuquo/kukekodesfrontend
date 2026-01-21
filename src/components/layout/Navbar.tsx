@@ -7,10 +7,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import logo from "@/assets/kukekodes-logo.png";
 
 const navLinks = [
-  { label: "Features", href: "#features" },
-  { label: "Courses", href: "#courses" },
-  { label: "AI Coach", href: "#ai-coach" },
-  { label: "Community", href: "#community" },
+  { label: "Features", href: "/#features" },
+  { label: "Courses", href: "/courses" },
+  { label: "Live Sessions", href: "/live" },
+  { label: "Community", href: "/community" },
 ];
 
 export function Navbar() {
@@ -64,13 +64,13 @@ export function Navbar() {
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center gap-8">
             {navLinks.map((link) => (
-              <a
+              <Link
                 key={link.label}
-                href={link.href}
+                to={link.href}
                 className="text-muted-foreground hover:text-foreground transition-colors text-sm font-medium"
               >
                 {link.label}
-              </a>
+              </Link>
             ))}
           </div>
 
@@ -157,14 +157,14 @@ export function Navbar() {
           >
             <div className="container mx-auto px-4 py-6 space-y-4">
               {navLinks.map((link) => (
-                <a
+                <Link
                   key={link.label}
-                  href={link.href}
+                  to={link.href}
                   onClick={() => setIsOpen(false)}
                   className="block text-muted-foreground hover:text-foreground transition-colors font-medium py-2"
                 >
                   {link.label}
-                </a>
+                </Link>
               ))}
               <div className="pt-4 space-y-3 border-t border-border">
                 {user ? (

@@ -1,14 +1,15 @@
 import { motion } from "framer-motion";
-import { Clock, BarChart3, Users, ArrowRight, Star, Play, Loader2 } from "lucide-react";
+import { Clock, BarChart3, Users, ArrowRight, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
-import api, { APICourse } from "@/services/api";
+import api, { Course } from "@/services/api";
 import coursePython from "@/assets/course-python.jpg";
 import { ScrollReveal, StaggerContainer, StaggerItem } from "@/components/ui/scroll-reveal";
 import { Link } from "react-router-dom";
+import { CourseCardSkeleton } from "@/components/ui/card-skeleton";
 
 export function Courses() {
-  const [courses, setCourses] = useState<APICourse[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
@@ -18,7 +19,7 @@ export function Courses() {
         const data = await api.getCourses();
         setCourses(data);
       } catch (error) {
-        console.error("Failed to load courses", error);
+        // Error logged by api.ts
       } finally {
         setLoading(false);
       }
@@ -43,17 +44,17 @@ export function Courses() {
               to job-ready developer. All courses are free, forever.
             </p>
           </div>
-          <Button variant="outline" className="shrink-0 group">
-            View All Courses
-            <ArrowRight className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1" />
+          <Button variant="outline" className="shrink-0 group" asChild>
+            <Link to="/courses">
+              View All Courses
+              <ArrowRight className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1" />
+            </Link>
           </Button>
         </ScrollReveal>
 
         {/* Course Cards */}
         {loading ? (
-          <div className="flex justify-center py-24">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          </div>
+          <CourseCardSkeleton />
         ) : (
           <StaggerContainer className="grid md:grid-cols-2 lg:grid-cols-3 gap-8" staggerDelay={0.15}>
             {courses.map((course, index) => (

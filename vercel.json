@@ -1,6 +1,26 @@
 {
     "rewrites": [
         {
+            "source": "/api/:path*",
+            "destination": "https://linkup-neon-ten.vercel.app/api/:path*"
+        },
+        {
+            "source": "/users/:path*",
+            "destination": "https://linkup-neon-ten.vercel.app/users/:path*"
+        },
+        {
+            "source": "/courses/run-code/:path*",
+            "destination": "https://linkup-neon-ten.vercel.app/courses/run-code/:path*"
+        },
+        {
+            "source": "/courses/ai-query/:path*",
+            "destination": "https://linkup-neon-ten.vercel.app/courses/ai-query/:path*"
+        },
+        {
+            "source": "/courses/submission-status/:path*",
+            "destination": "https://linkup-neon-ten.vercel.app/courses/submission-status/:path*"
+        },
+        {
             "source": "/(.*)",
             "destination": "/index.html"
         }

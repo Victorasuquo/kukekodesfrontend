@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import api, { APICourse, APIUserProgress } from '@/services/api';
+import { Certificates } from '@/components/sections/Certificates';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -48,10 +49,10 @@ export default function Dashboard() {
     navigate('/');
   };
 
-  const getTotalLessons = (course: APICourse) => 
+  const getTotalLessons = (course: APICourse) =>
     course.lessons?.length || 0;
 
-  const getTotalDuration = (course: APICourse) => 
+  const getTotalDuration = (course: APICourse) =>
     course.lessons?.reduce((acc, l) => acc + l.duration_minutes, 0) || 0;
 
   const getCourseProgress = (course: APICourse) => {
@@ -115,13 +116,13 @@ export default function Dashboard() {
                       {course.title}
                     </h3>
                     <p className="text-sm text-muted-foreground line-clamp-2 mb-4">{course.description}</p>
-                    
+
                     {course.instructor && (
                       <p className="text-xs text-muted-foreground mb-2">
                         Instructor: {course.instructor.first_name} {course.instructor.last_name}
                       </p>
                     )}
-                    
+
                     <div className="flex items-center gap-4 text-xs text-muted-foreground mb-4">
                       <span className="flex items-center gap-1">
                         <BookOpen className="w-3 h-3" />
@@ -143,8 +144,8 @@ export default function Dashboard() {
                       </div>
                     )}
 
-                    <Button 
-                      className="w-full" 
+                    <Button
+                      className="w-full"
                       onClick={() => navigate(`/courses/${course.id}`)}
                     >
                       {progress > 0 ? 'Continue Learning' : 'Start Course'}
@@ -156,6 +157,13 @@ export default function Dashboard() {
           </div>
         )}
       </main>
+
+      <section className="container mx-auto px-4 py-8 border-t border-border">
+        <h2 className="text-2xl font-bold bg-gradient-to-r from-yellow-500 to-amber-600 bg-clip-text text-transparent mb-6">
+          My Certificates
+        </h2>
+        <Certificates />
+      </section>
     </div>
   );
 }

@@ -6,11 +6,12 @@ import { getYoutubeVideoId } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ArrowLeft, CheckCircle, Circle, Loader2, BookOpen, MessageSquare, Terminal } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Circle, Loader2, BookOpen, MessageSquare, Terminal, FileQuestion } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AICoach, AITutor } from '@/components/sections/AICoach';
 import { CodeEditor } from '@/components/CodeEditor';
+import { Quiz } from '@/components/Quiz';
 
 export default function CourseViewer() {
   const { courseId } = useParams();
@@ -148,6 +149,9 @@ export default function CourseViewer() {
                   <TabsTrigger value="content" className="flex gap-2"><BookOpen className="w-4 h-4" /> Lesson</TabsTrigger>
                   <TabsTrigger value="code" className="flex gap-2"><Terminal className="w-4 h-4" /> Code</TabsTrigger>
                   <TabsTrigger value="ai" className="flex gap-2"><MessageSquare className="w-4 h-4" /> AI Tutor</TabsTrigger>
+                  {currentLesson.quizzes && currentLesson.quizzes.length > 0 && (
+                    <TabsTrigger value="quiz" className="flex gap-2"><FileQuestion className="w-4 h-4" /> Quiz</TabsTrigger>
+                  )}
                 </TabsList>
 
                 <TabsContent value="content" className="space-y-4">
@@ -186,6 +190,14 @@ export default function CourseViewer() {
                 <TabsContent value="ai">
                   <AITutor lessonId={currentLesson.id} />
                 </TabsContent>
+
+                {currentLesson.quizzes && currentLesson.quizzes.length > 0 && (
+                  <TabsContent value="quiz">
+                    {currentLesson.quizzes.map(quiz => (
+                      <Quiz key={quiz.id} quizId={quiz.id} onComplete={handleMarkComplete} />
+                    ))}
+                  </TabsContent>
+                )}
               </Tabs>
             </div>
           )}

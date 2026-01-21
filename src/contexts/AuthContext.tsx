@@ -71,9 +71,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (username: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      const success = await api.login(username, password);
+      const result = await api.login(username, password);
 
-      if (success) {
+      if (result.success) {
         // Fetch user details after login
         try {
           const users = await api.getUsers();
@@ -95,7 +95,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return { success: false, error: 'Failed to retrieve user profile' };
         }
       }
-      return { success: false, error: 'Invalid username or password' };
+      console.error("Login failed details:", result);
+      if (result.status === 403) return { success: false, error: 'Access denied: CSRF or Permission issue' };
+      if (result.status === 401) return { success: false, error: 'Invalid username or password' };
+      return { success: false, error: `Login failed (Status: ${result.status})` };
     } catch (error) {
       console.error("Login exception", error);
       return { success: false, error: error instanceof Error ? error.message : 'Login failed' };
@@ -104,15 +107,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signup = async (username: string, email: string, password: string, passwordConfirm: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      const success = await api.register(username, email, password, passwordConfirm);
+      const result = await api.register(username, email, password, passwordConfirm);
 
-      if (success) {
+      if (result.success) {
         // Auto-login after registration
         const loginResult = await login(username, password);
         return loginResult;
       }
 
-      return { success: false, error: 'Registration failed' };
+      console.error("Signup failed details:", result);
+      return { success: false, error: `Registration failed (Status: ${result.status})` };
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : 'Registration failed' };
     }
