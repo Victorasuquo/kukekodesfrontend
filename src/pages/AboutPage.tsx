@@ -324,16 +324,12 @@ export default function AboutPage() {
                                         className="absolute right-0 top-0 w-[70%] h-[65%]"
                                     >
                                         <div className="relative w-full h-full rounded-[3rem] overflow-hidden border-4 border-white/10 shadow-2xl shadow-primary/20">
-                                            <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-secondary/20" />
-                                            {/* Placeholder - replace with real image */}
-                                            <div className="w-full h-full bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
-                                                <div className="text-center p-6">
-                                                    <Users className="w-16 h-16 text-primary/30 mx-auto mb-3" />
-                                                    <p className="text-xs text-muted-foreground">
-                                                        Add: <code className="bg-muted px-1">/images/about/community-1.jpg</code>
-                                                    </p>
-                                                </div>
-                                            </div>
+                                            <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-secondary/20 z-10 pointer-events-none" />
+                                            <img
+                                                src="/images/about/community-1.jpg"
+                                                alt="Kukekodes community of learners"
+                                                className="w-full h-full object-cover"
+                                            />
                                         </div>
                                     </motion.div>
 
@@ -345,16 +341,12 @@ export default function AboutPage() {
                                         className="absolute left-0 bottom-[10%] w-[55%] h-[45%]"
                                     >
                                         <div className="relative w-full h-full rounded-[2rem] overflow-hidden border-4 border-white/10 shadow-xl shadow-secondary/20 rotate-[-3deg]">
-                                            <div className="absolute inset-0 bg-gradient-to-tr from-secondary/20 to-accent/20" />
-                                            {/* Placeholder */}
-                                            <div className="w-full h-full bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
-                                                <div className="text-center p-4">
-                                                    <BookOpen className="w-12 h-12 text-secondary/30 mx-auto mb-2" />
-                                                    <p className="text-xs text-muted-foreground">
-                                                        Add: <code className="bg-muted px-1">/images/about/learning.jpg</code>
-                                                    </p>
-                                                </div>
-                                            </div>
+                                            <div className="absolute inset-0 bg-gradient-to-tr from-secondary/20 to-accent/20 z-10 pointer-events-none" />
+                                            <img
+                                                src="/images/about/learning.jpg"
+                                                alt="Student learning to code"
+                                                className="w-full h-full object-cover"
+                                            />
                                         </div>
                                     </motion.div>
 
@@ -479,17 +471,12 @@ export default function AboutPage() {
 
                                     {/* Main image */}
                                     <div className="relative rounded-[3rem] overflow-hidden border-4 border-white/10 shadow-2xl aspect-[4/3]">
-                                        <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-secondary/20" />
-                                        {/* Placeholder */}
-                                        <div className="w-full h-full bg-gradient-to-br from-primary/5 via-muted to-secondary/5 flex items-center justify-center">
-                                            <div className="text-center p-8">
-                                                <Target className="w-20 h-20 text-primary/30 mx-auto mb-4" />
-                                                <p className="text-muted-foreground">
-                                                    Add image: <code className="text-xs bg-muted px-2 py-1 rounded">/images/about/vision.jpg</code>
-                                                </p>
-                                                <p className="text-xs text-muted-foreground/60 mt-2">Global learners, diverse faces, looking forward</p>
-                                            </div>
-                                        </div>
+                                        <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-secondary/20 z-10 pointer-events-none" />
+                                        <img
+                                            src="/images/about/vision.jpg"
+                                            alt="Global learners building their future"
+                                            className="w-full h-full object-cover"
+                                        />
                                     </div>
 
                                     {/* Floating stat */}
@@ -596,17 +583,12 @@ export default function AboutPage() {
 
                                     {/* Main image */}
                                     <div className="relative rounded-[3rem] overflow-hidden border-4 border-white/10 shadow-2xl aspect-[4/3]">
-                                        <div className="absolute inset-0 bg-gradient-to-br from-secondary/20 to-accent/20" />
-                                        {/* Placeholder */}
-                                        <div className="w-full h-full bg-gradient-to-br from-secondary/5 via-muted to-accent/5 flex items-center justify-center">
-                                            <div className="text-center p-8">
-                                                <Rocket className="w-20 h-20 text-secondary/30 mx-auto mb-4" />
-                                                <p className="text-muted-foreground">
-                                                    Add image: <code className="text-xs bg-muted px-2 py-1 rounded">/images/about/mission.jpg</code>
-                                                </p>
-                                                <p className="text-xs text-muted-foreground/60 mt-2">Learners coding, building projects together</p>
-                                            </div>
-                                        </div>
+                                        <div className="absolute inset-0 bg-gradient-to-br from-secondary/20 to-accent/20 z-10 pointer-events-none" />
+                                        <img
+                                            src="/images/about/mission.jpg"
+                                            alt="Learners coding and building projects together"
+                                            className="w-full h-full object-cover"
+                                        />
                                     </div>
 
                                     {/* Floating elements */}
