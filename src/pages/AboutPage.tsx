@@ -617,10 +617,28 @@ export default function AboutPage() {
                     </div>
                 </section>
 
-                {/* Core Values Section - Interactive Cards */}
+                {/* Core Values Section - Visual with Images */}
                 <section className="py-24 relative overflow-hidden">
-                    <div className="container mx-auto px-4">
-                        <ScrollReveal className="text-center max-w-3xl mx-auto mb-16">
+                    {/* Background blobs */}
+                    <div className="absolute inset-0 pointer-events-none">
+                        <motion.div
+                            animate={{ rotate: [0, 360] }}
+                            transition={{ duration: 80, repeat: Infinity, ease: "linear" }}
+                            className="absolute -top-1/4 -left-1/4 w-[600px] h-[600px]"
+                        >
+                            <BlobShape className="w-full h-full text-primary/5" variant={1} />
+                        </motion.div>
+                        <motion.div
+                            animate={{ rotate: [360, 0] }}
+                            transition={{ duration: 100, repeat: Infinity, ease: "linear" }}
+                            className="absolute -bottom-1/4 -right-1/4 w-[500px] h-[500px]"
+                        >
+                            <BlobShape className="w-full h-full text-secondary/5" variant={2} />
+                        </motion.div>
+                    </div>
+
+                    <div className="container mx-auto px-4 relative z-10">
+                        <ScrollReveal className="text-center max-w-3xl mx-auto mb-20">
                             <span className="text-primary text-sm font-semibold uppercase tracking-wider">
                                 What We Stand For
                             </span>
@@ -630,36 +648,255 @@ export default function AboutPage() {
                                     Values
                                 </span>
                             </h2>
+                            <p className="mt-4 text-lg text-muted-foreground">
+                                These principles guide everything we build and every learner we serve.
+                            </p>
                         </ScrollReveal>
 
-                        <StaggerContainer className="grid md:grid-cols-2 lg:grid-cols-3 gap-6" staggerDelay={0.1}>
-                            {coreValues.map((value) => (
-                                <StaggerItem key={value.title}>
+                        {/* Value 1 - Free Forever */}
+                        <div className="grid lg:grid-cols-2 gap-12 items-center mb-24">
+                            <ScrollReveal variant="slideLeft" className="relative">
+                                <div className="relative">
                                     <motion.div
-                                        whileHover={{ y: -8, scale: 1.02 }}
-                                        className="group relative h-full"
+                                        animate={{ scale: [1, 1.05, 1] }}
+                                        transition={{ duration: 8, repeat: Infinity }}
+                                        className="absolute inset-0 -m-4"
                                     >
-                                        {/* Gradient glow on hover */}
-                                        <div className={`absolute inset-0 bg-gradient-to-br ${value.color} rounded-3xl blur-xl opacity-0 group-hover:opacity-20 transition-opacity duration-500`} />
+                                        <BlobShape className="w-full h-full text-rose-500/10" variant={1} />
+                                    </motion.div>
+                                    <div className="relative rounded-[2.5rem] overflow-hidden border-4 border-white/10 shadow-2xl aspect-[4/3]">
+                                        <div className="absolute inset-0 bg-gradient-to-br from-rose-500/20 to-pink-500/20 z-10 pointer-events-none" />
+                                        <img
+                                            src="/images/about/community-1.jpg"
+                                            alt="Free education for everyone"
+                                            className="w-full h-full object-cover"
+                                        />
+                                    </div>
+                                    <motion.div
+                                        animate={{ y: [0, -8, 0] }}
+                                        transition={{ duration: 3, repeat: Infinity }}
+                                        className="absolute -bottom-4 -right-4 bg-gradient-to-br from-rose-500 to-pink-500 text-white rounded-2xl px-6 py-3 shadow-xl"
+                                    >
+                                        <span className="font-bold text-lg">$0 Forever</span>
+                                    </motion.div>
+                                </div>
+                            </ScrollReveal>
+                            <ScrollReveal variant="slideRight" delay={0.1}>
+                                <h3 className="text-3xl font-bold text-foreground mb-4">Free Forever</h3>
+                                <p className="text-lg text-muted-foreground leading-relaxed mb-6">
+                                    Quality education should never be behind a paywall. We're committed to keeping
+                                    Kukekodes completely free for everyone, everywhere—no hidden fees, no premium tiers,
+                                    no subscriptions. Your growth shouldn't depend on your wallet.
+                                </p>
+                                <div className="flex flex-wrap gap-3">
+                                    {["No Credit Card", "No Subscriptions", "No Hidden Costs"].map((tag) => (
+                                        <span key={tag} className="px-4 py-2 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 text-sm font-medium">
+                                            {tag}
+                                        </span>
+                                    ))}
+                                </div>
+                            </ScrollReveal>
+                        </div>
 
-                                        {/* Glassmorphism card */}
-                                        <div className="relative bg-card/50 backdrop-blur-xl border border-white/10 rounded-3xl p-8 h-full group-hover:border-white/20 transition-colors">
-                                            {/* Icon with gradient background */}
-                                            <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${value.color} flex items-center justify-center mb-6 shadow-lg`}>
-                                                <value.icon className="w-7 h-7 text-white" />
+                        {/* Value 2 - Globally Inclusive (Reversed) */}
+                        <div className="grid lg:grid-cols-2 gap-12 items-center mb-24">
+                            <ScrollReveal variant="slideLeft" delay={0.1} className="lg:order-2">
+                                <div className="relative">
+                                    <motion.div
+                                        animate={{ scale: [1, 1.08, 1] }}
+                                        transition={{ duration: 10, repeat: Infinity }}
+                                        className="absolute inset-0 -m-4"
+                                    >
+                                        <BlobShape className="w-full h-full text-blue-500/10" variant={2} />
+                                    </motion.div>
+                                    <div className="relative rounded-[2.5rem] overflow-hidden border-4 border-white/10 shadow-2xl aspect-[4/3]">
+                                        <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 z-10 pointer-events-none" />
+                                        <img
+                                            src="/images/about/vision.jpg"
+                                            alt="Learners from around the world"
+                                            className="w-full h-full object-cover"
+                                        />
+                                    </div>
+                                    <motion.div
+                                        animate={{ y: [0, 8, 0] }}
+                                        transition={{ duration: 4, repeat: Infinity }}
+                                        className="absolute -top-4 -left-4 bg-gradient-to-br from-blue-500 to-cyan-500 text-white rounded-2xl px-6 py-3 shadow-xl"
+                                    >
+                                        <span className="font-bold text-lg flex items-center gap-2">
+                                            <Globe className="w-5 h-5" /> 120+ Countries
+                                        </span>
+                                    </motion.div>
+                                </div>
+                            </ScrollReveal>
+                            <ScrollReveal variant="slideRight" className="lg:order-1">
+                                <h3 className="text-3xl font-bold text-foreground mb-4">Globally Inclusive</h3>
+                                <p className="text-lg text-muted-foreground leading-relaxed mb-6">
+                                    Built for emerging markets with low-bandwidth optimization and mobile-first design.
+                                    Geography and background should never limit who can learn to code. Whether you're
+                                    in Lagos, Jakarta, or São Paulo—we've got you covered.
+                                </p>
+                                <div className="flex flex-wrap gap-3">
+                                    {["Low Bandwidth", "Mobile-First", "Any Device"].map((tag) => (
+                                        <span key={tag} className="px-4 py-2 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 text-sm font-medium">
+                                            {tag}
+                                        </span>
+                                    ))}
+                                </div>
+                            </ScrollReveal>
+                        </div>
+
+                        {/* Value 3 - AI-Powered */}
+                        <div className="grid lg:grid-cols-2 gap-12 items-center mb-24">
+                            <ScrollReveal variant="slideLeft" className="relative">
+                                <div className="relative">
+                                    <motion.div
+                                        animate={{ scale: [1, 1.06, 1], rotate: [0, 5, 0] }}
+                                        transition={{ duration: 12, repeat: Infinity }}
+                                        className="absolute inset-0 -m-4"
+                                    >
+                                        <BlobShape className="w-full h-full text-violet-500/10" variant={3} />
+                                    </motion.div>
+                                    <div className="relative rounded-[2.5rem] overflow-hidden border-4 border-white/10 shadow-2xl aspect-[4/3]">
+                                        <div className="absolute inset-0 bg-gradient-to-br from-violet-500/20 to-purple-500/20 z-10 pointer-events-none" />
+                                        <img
+                                            src="/images/about/learning.jpg"
+                                            alt="AI-powered personalized learning"
+                                            className="w-full h-full object-cover"
+                                        />
+                                    </div>
+                                    <motion.div
+                                        animate={{ y: [0, -10, 0], x: [0, 5, 0] }}
+                                        transition={{ duration: 5, repeat: Infinity }}
+                                        className="absolute -bottom-4 -right-4 bg-card/90 backdrop-blur-xl border border-white/20 rounded-2xl p-4 shadow-xl"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center">
+                                                <Bot className="w-5 h-5 text-white" />
                                             </div>
-
-                                            <h3 className="text-xl font-semibold text-foreground mb-2">
-                                                {value.title}
-                                            </h3>
-                                            <p className="text-muted-foreground">
-                                                {value.description}
-                                            </p>
+                                            <div>
+                                                <p className="text-sm font-medium">AI Tutor</p>
+                                                <p className="text-xs text-muted-foreground">Online 24/7</p>
+                                            </div>
                                         </div>
                                     </motion.div>
-                                </StaggerItem>
-                            ))}
-                        </StaggerContainer>
+                                </div>
+                            </ScrollReveal>
+                            <ScrollReveal variant="slideRight" delay={0.1}>
+                                <h3 className="text-3xl font-bold text-foreground mb-4">AI-Powered Learning</h3>
+                                <p className="text-lg text-muted-foreground leading-relaxed mb-6">
+                                    Every learner deserves a personal tutor. Our AI coach provides 24/7 guidance,
+                                    instant feedback on your code, and personalized explanations—like having a
+                                    patient teacher who never gets tired and knows exactly where you're stuck.
+                                </p>
+                                <div className="flex flex-wrap gap-3">
+                                    {["24/7 Available", "Context-Aware", "Patient & Personal"].map((tag) => (
+                                        <span key={tag} className="px-4 py-2 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 text-sm font-medium">
+                                            {tag}
+                                        </span>
+                                    ))}
+                                </div>
+                            </ScrollReveal>
+                        </div>
+
+                        {/* Value 4 - Learn by Doing (Reversed) */}
+                        <div className="grid lg:grid-cols-2 gap-12 items-center mb-24">
+                            <ScrollReveal variant="slideLeft" delay={0.1} className="lg:order-2">
+                                <div className="relative">
+                                    <motion.div
+                                        animate={{ scale: [1, 1.04, 1] }}
+                                        transition={{ duration: 9, repeat: Infinity }}
+                                        className="absolute inset-0 -m-4"
+                                    >
+                                        <BlobShape className="w-full h-full text-emerald-500/10" variant={1} />
+                                    </motion.div>
+                                    <div className="relative rounded-[2.5rem] overflow-hidden border-4 border-white/10 shadow-2xl aspect-[4/3]">
+                                        <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/20 to-teal-500/20 z-10 pointer-events-none" />
+                                        <img
+                                            src="/images/about/mission.jpg"
+                                            alt="Hands-on coding projects"
+                                            className="w-full h-full object-cover"
+                                        />
+                                    </div>
+                                    <motion.div
+                                        animate={{ y: [0, 8, 0] }}
+                                        transition={{ duration: 4, repeat: Infinity }}
+                                        className="absolute -top-4 -right-4 bg-gradient-to-br from-emerald-500 to-teal-500 text-white rounded-2xl px-6 py-3 shadow-xl"
+                                    >
+                                        <span className="font-bold text-lg flex items-center gap-2">
+                                            <Code className="w-5 h-5" /> Real Projects
+                                        </span>
+                                    </motion.div>
+                                </div>
+                            </ScrollReveal>
+                            <ScrollReveal variant="slideRight" className="lg:order-1">
+                                <h3 className="text-3xl font-bold text-foreground mb-4">Learn by Doing</h3>
+                                <p className="text-lg text-muted-foreground leading-relaxed mb-6">
+                                    Real skills come from real practice. Build actual projects, write real code,
+                                    and create portfolio-worthy work—not just watch videos. Our browser-based
+                                    coding sandbox means you're coding from day one, no setup required.
+                                </p>
+                                <div className="flex flex-wrap gap-3">
+                                    {["Browser IDE", "Real Projects", "Portfolio Ready"].map((tag) => (
+                                        <span key={tag} className="px-4 py-2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-sm font-medium">
+                                            {tag}
+                                        </span>
+                                    ))}
+                                </div>
+                            </ScrollReveal>
+                        </div>
+
+                        {/* Bottom two values - Community & Impact in cards */}
+                        <div className="grid md:grid-cols-2 gap-8 mt-8">
+                            <ScrollReveal variant="slideLeft">
+                                <motion.div
+                                    whileHover={{ y: -5 }}
+                                    className="relative bg-gradient-to-br from-orange-500/10 to-amber-500/10 backdrop-blur-xl border border-orange-500/20 rounded-3xl p-8 h-full overflow-hidden group"
+                                >
+                                    <div className="absolute -top-20 -right-20 w-40 h-40 opacity-20">
+                                        <BlobShape className="w-full h-full text-orange-500" variant={2} />
+                                    </div>
+                                    <div className="relative z-10">
+                                        <h3 className="text-2xl font-bold text-foreground mb-3">Community-Driven</h3>
+                                        <p className="text-muted-foreground mb-4">
+                                            No one learns alone. Our global community of learners supports, encourages,
+                                            and holds each other accountable. Ask questions, share projects, and grow together.
+                                        </p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {["Forums", "Peer Reviews", "Study Groups"].map((tag) => (
+                                                <span key={tag} className="px-3 py-1 rounded-full bg-orange-500/10 text-orange-600 dark:text-orange-400 text-xs font-medium">
+                                                    {tag}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            </ScrollReveal>
+
+                            <ScrollReveal variant="slideRight" delay={0.1}>
+                                <motion.div
+                                    whileHover={{ y: -5 }}
+                                    className="relative bg-gradient-to-br from-primary/10 to-secondary/10 backdrop-blur-xl border border-primary/20 rounded-3xl p-8 h-full overflow-hidden group"
+                                >
+                                    <div className="absolute -top-20 -right-20 w-40 h-40 opacity-20">
+                                        <BlobShape className="w-full h-full text-primary" variant={3} />
+                                    </div>
+                                    <div className="relative z-10">
+                                        <h3 className="text-2xl font-bold text-foreground mb-3">Impact-Focused</h3>
+                                        <p className="text-muted-foreground mb-4">
+                                            We measure success by real outcomes: jobs landed, projects built, startups launched.
+                                            Your career growth and real-world impact are our ultimate success metrics.
+                                        </p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {["Jobs", "Startups", "Real Impact"].map((tag) => (
+                                                <span key={tag} className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
+                                                    {tag}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            </ScrollReveal>
+                        </div>
                     </div>
                 </section>
 
