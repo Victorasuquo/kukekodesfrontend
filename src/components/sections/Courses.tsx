@@ -8,6 +8,13 @@ import { ScrollReveal, StaggerContainer, StaggerItem } from "@/components/ui/scr
 import { Link } from "react-router-dom";
 import { CourseCardSkeleton } from "@/components/ui/card-skeleton";
 
+// Map skill_level to display text
+const levelLabels: Record<string, string> = {
+  beginner: 'Beginner',
+  intermediate: 'Intermediate',
+  advanced: 'Advanced',
+};
+
 export function Courses() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
@@ -16,16 +23,23 @@ export function Courses() {
   useEffect(() => {
     const fetchCourses = async () => {
       try {
-        const data = await api.getCourses();
-        setCourses(data);
+        const response = await api.getCourses({ page_size: 6 });
+        setCourses(response.data || []);
       } catch (error) {
         // Error logged by api.ts
+        console.error('Failed to fetch courses', error);
       } finally {
         setLoading(false);
       }
     };
     fetchCourses();
   }, []);
+
+  // Count total lessons from modules
+  const getLessonCount = (course: Course): number => {
+    if (!course.modules) return 0;
+    return course.modules.reduce((total, module) => total + (module.lessons?.length || 0), 0);
+  };
 
   return (
     <section id="courses" className="py-24 lg:py-32 relative bg-muted/20">
@@ -55,6 +69,10 @@ export function Courses() {
         {/* Course Cards */}
         {loading ? (
           <CourseCardSkeleton />
+        ) : courses.length === 0 ? (
+          <div className="text-center py-16">
+            <p className="text-muted-foreground text-lg">No courses available yet. Check back soon!</p>
+          </div>
         ) : (
           <StaggerContainer className="grid md:grid-cols-2 lg:grid-cols-3 gap-8" staggerDelay={0.15}>
             {courses.map((course, index) => (
@@ -67,7 +85,7 @@ export function Courses() {
                   {/* Image */}
                   <div className="relative h-48 overflow-hidden shrink-0">
                     <motion.img
-                      src={course.thumbnail || coursePython}
+                      src={course.thumbnail_url || course.cover_image_url || coursePython}
                       alt={course.title}
                       className="w-full h-full object-cover"
                       animate={{ scale: hoveredIndex === index ? 1.1 : 1 }}
@@ -89,8 +107,15 @@ export function Courses() {
                     {/* Level Badge */}
                     <div className="absolute top-4 left-4 inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-card/90 backdrop-blur-sm text-foreground border border-border/50">
                       <BarChart3 className="w-3 h-3 mr-1" />
-                      {course.level}
+                      {levelLabels[course.skill_level] || course.skill_level}
                     </div>
+
+                    {/* Free Badge */}
+                    {course.is_free && (
+                      <div className="absolute top-4 right-4 inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-primary/90 text-primary-foreground">
+                        Free
+                      </div>
+                    )}
                   </div>
 
                   <div className="p-6 flex flex-col flex-1">
@@ -104,15 +129,13 @@ export function Courses() {
                     <div className="mt-auto">
                       {/* Stats */}
                       <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
-                        {course.instructor && (
-                          <div className="flex items-center gap-1">
-                            <Users className="w-4 h-4" />
-                            {course.instructor.first_name}
-                          </div>
-                        )}
+                        <div className="flex items-center gap-1">
+                          <Users className="w-4 h-4" />
+                          {course.total_enrollments || 0} enrolled
+                        </div>
                         <div className="flex items-center gap-1">
                           <Clock className="w-4 h-4" />
-                          {course.lessons?.length || 0} lessons
+                          {getLessonCount(course)} lessons
                         </div>
                       </div>
 

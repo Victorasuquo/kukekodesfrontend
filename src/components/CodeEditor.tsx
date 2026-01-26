@@ -5,7 +5,7 @@ import { Loader2, Play, Terminal } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 
 interface CodeEditorProps {
-    lessonId: number;
+    lessonId: string;
 }
 
 export function CodeEditor({ lessonId }: CodeEditorProps) {
@@ -20,17 +20,16 @@ export function CodeEditor({ lessonId }: CodeEditorProps) {
 
         try {
             const { submission_id } = await api.runCode(code, lessonId);
-
             if (submission_id) {
                 checkStatus(submission_id);
             }
         } catch (error) {
-            toast({ title: 'Error', description: 'Failed to submit code', variant: 'destructive' });
+            toast({ title: 'Coming Soon', description: 'Code execution feature is coming soon!', variant: 'default' });
             setLoading(false);
         }
     };
 
-    const checkStatus = async (submissionId: number) => {
+    const checkStatus = async (submissionId: string) => {
         try {
             const data = await api.getSubmissionStatus(submissionId);
 

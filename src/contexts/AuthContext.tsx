@@ -1,124 +1,93 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import api, { APIUser } from '@/services/api';
-
-interface User {
-  id: number;
-  username: string;
-  email: string;
-  name: string;
-  role: 'admin' | 'user';
-  isInstructor: boolean;
-  bio?: string;
-  profilePicture?: string;
-}
+import api, { getAccessToken, getStoredUser, clearTokens, setStoredUser } from '@/services/api';
+import { User, AppUser } from '@/types/lms';
 
 interface AuthContextType {
-  user: User | null;
+  user: AppUser | null;
   isLoading: boolean;
-  login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  signup: (username: string, email: string, password: string, passwordConfirm: string) => Promise<{ success: boolean; error?: string }>;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  signup: (data: {
+    email: string;
+    password: string;
+    first_name: string;
+    last_name: string;
+    country?: string;
+  }) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   isAdmin: boolean;
-  refreshUser: () => Promise<void>;
+  isInstructor: boolean;
+  refreshUser: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const AUTH_STORAGE_KEY = 'kukekodes_auth_user';
-
-function mapAPIUserToUser(apiUser: APIUser): User {
+function mapUserToAppUser(user: User): AppUser {
   return {
-    id: apiUser.id,
-    username: apiUser.username,
-    email: apiUser.email,
-    name: `${apiUser.first_name} ${apiUser.last_name}`.trim() || apiUser.username,
-    role: apiUser.is_instructor ? 'admin' : 'user',
-    isInstructor: apiUser.is_instructor,
-    bio: apiUser.bio,
-    profilePicture: apiUser.profile_picture,
+    id: user.id,
+    username: user.username || user.email.split('@')[0],
+    email: user.email,
+    name: `${user.first_name} ${user.last_name}`.trim(),
+    role: user.role,
+    profilePicture: user.profile_picture_url,
+    country: user.country,
   };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AppUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const refreshUser = async () => {
-    try {
-      // Try to get current user from API by checking user-progress (requires auth)
-      const users = await api.getUsers();
-      // For now, we rely on stored user since Django session auth
-      // The user info is stored locally after successful login
-    } catch (error) {
-      // Not authenticated
+  const refreshUser = () => {
+    const storedUser = getStoredUser();
+    if (storedUser) {
+      setUser(mapUserToAppUser(storedUser));
+    } else {
       setUser(null);
-      localStorage.removeItem(AUTH_STORAGE_KEY);
     }
   };
 
   // Check for existing session on mount
   useEffect(() => {
-    const storedUser = localStorage.getItem(AUTH_STORAGE_KEY);
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch {
-        localStorage.removeItem(AUTH_STORAGE_KEY);
-      }
+    const token = getAccessToken();
+    const storedUser = getStoredUser();
+
+    if (token && storedUser) {
+      setUser(mapUserToAppUser(storedUser));
     }
     setIsLoading(false);
   }, []);
 
-  const login = async (username: string, password: string): Promise<{ success: boolean; error?: string }> => {
+  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      const result = await api.login(username, password);
-
-      if (result.success) {
-        // Fetch user details after login
-        try {
-          const users = await api.getUsers();
-          const foundUser = users.find(u => u.username === username);
-          if (foundUser) {
-            const mappedUser = mapAPIUserToUser(foundUser);
-            setUser(mappedUser);
-            localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(mappedUser));
-            return { success: true };
-          } else {
-            // Fallback if user not in list (should not happen if auth works)
-            throw new Error('User details not found');
-          }
-        } catch (e) {
-          // If we can't get the user details, we might still be logged in but can't build the local user object fully.
-          // Ideally we should have a /users/me/ endpoint or similar.
-          // For now, we rely on username from login.
-          console.error("Failed to fetch user details", e);
-          return { success: false, error: 'Failed to retrieve user profile' };
-        }
-      }
-      console.error("Login failed details:", result);
-      if (result.status === 403) return { success: false, error: 'Access denied: CSRF or Permission issue' };
-      if (result.status === 401) return { success: false, error: 'Invalid username or password' };
-      return { success: false, error: `Login failed (Status: ${result.status})` };
+      const response = await api.login(email, password);
+      setUser(mapUserToAppUser(response.user));
+      return { success: true };
     } catch (error) {
-      console.error("Login exception", error);
-      return { success: false, error: error instanceof Error ? error.message : 'Login failed' };
+      console.error('Login failed', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Login failed'
+      };
     }
   };
 
-  const signup = async (username: string, email: string, password: string, passwordConfirm: string): Promise<{ success: boolean; error?: string }> => {
+  const signup = async (data: {
+    email: string;
+    password: string;
+    first_name: string;
+    last_name: string;
+    country?: string;
+  }): Promise<{ success: boolean; error?: string }> => {
     try {
-      const result = await api.register(username, email, password, passwordConfirm);
-
-      if (result.success) {
-        // Auto-login after registration
-        const loginResult = await login(username, password);
-        return loginResult;
-      }
-
-      console.error("Signup failed details:", result);
-      return { success: false, error: `Registration failed (Status: ${result.status})` };
+      const response = await api.register(data);
+      setUser(mapUserToAppUser(response.user));
+      return { success: true };
     } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : 'Registration failed' };
+      console.error('Signup failed', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Registration failed'
+      };
     }
   };
 
@@ -128,8 +97,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
+      clearTokens();
       setUser(null);
-      localStorage.removeItem(AUTH_STORAGE_KEY);
     }
   };
 
@@ -140,7 +109,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       signup,
       logout,
-      isAdmin: user?.role === 'admin' || user?.isInstructor === true,
+      isAdmin: user?.role === 'admin',
+      isInstructor: user?.role === 'instructor' || user?.role === 'admin',
       refreshUser,
     }}>
       {children}

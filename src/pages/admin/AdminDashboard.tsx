@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import api, { APICourse } from '@/services/api';
+import api, { Course } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -19,28 +19,35 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Edit, Trash2, BookOpen, LogOut, Loader2 } from 'lucide-react';
 
+// Map skill_level to display text
+const levelLabels: Record<string, string> = {
+  beginner: 'Beginner',
+  intermediate: 'Intermediate',
+  advanced: 'Advanced',
+};
+
 export default function AdminDashboard() {
-  const { user, logout, isAdmin } = useAuth();
+  const { user, logout, isAdmin, isInstructor } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [courses, setCourses] = useState<APICourse[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
-  const [deleting, setDeleting] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) {
       navigate('/auth');
       return;
     }
-    if (!isAdmin) {
+    if (!isAdmin && !isInstructor) {
       navigate('/dashboard');
       return;
     }
 
     const fetchCourses = async () => {
       try {
-        const data = await api.getCourses();
-        setCourses(data);
+        const response = await api.getCourses();
+        setCourses(response.data || []);
       } catch (error) {
         console.error('Failed to fetch courses:', error);
         toast({ title: 'Error', description: 'Failed to load courses', variant: 'destructive' });
@@ -50,9 +57,9 @@ export default function AdminDashboard() {
     };
 
     fetchCourses();
-  }, [user, isAdmin, navigate, toast]);
+  }, [user, isAdmin, isInstructor, navigate, toast]);
 
-  const handleDeleteCourse = async (courseId: number) => {
+  const handleDeleteCourse = async (courseId: string) => {
     setDeleting(courseId);
     try {
       await api.deleteCourse(courseId);
@@ -70,11 +77,18 @@ export default function AdminDashboard() {
     navigate('/');
   };
 
-  const getTotalLessons = (course: APICourse) => {
-    return course.lessons?.length || 0;
+  // Count total lessons from all modules
+  const getTotalLessons = (course: Course): number => {
+    if (!course.modules) return 0;
+    return course.modules.reduce((total, module) => total + (module.lessons?.length || 0), 0);
   };
 
-  if (!user || !isAdmin) return null;
+  // Get total lessons across all courses
+  const getTotalLessonsAll = (): number => {
+    return courses.reduce((acc, course) => acc + getTotalLessons(course), 0);
+  };
+
+  if (!user || (!isAdmin && !isInstructor)) return null;
 
   if (loading) {
     return (
@@ -91,7 +105,7 @@ export default function AdminDashboard() {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link to="/" className="text-xl font-bold text-primary">KukeKodes</Link>
-            <Badge variant="secondary">Admin</Badge>
+            <Badge variant="secondary">{isAdmin ? 'Admin' : 'Instructor'}</Badge>
           </div>
           <div className="flex items-center gap-4">
             <span className="text-sm text-muted-foreground">{user.email}</span>
@@ -126,9 +140,7 @@ export default function AdminDashboard() {
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>Total Lessons</CardDescription>
-              <CardTitle className="text-3xl">
-                {courses.reduce((acc, c) => acc + getTotalLessons(c), 0)}
-              </CardTitle>
+              <CardTitle className="text-3xl">{getTotalLessonsAll()}</CardTitle>
             </CardHeader>
           </Card>
         </div>
@@ -136,7 +148,7 @@ export default function AdminDashboard() {
         {/* Courses List */}
         <div className="space-y-4">
           <h2 className="text-xl font-semibold text-foreground">All Courses</h2>
-          
+
           {courses.length === 0 ? (
             <Card className="p-12 text-center">
               <BookOpen className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
@@ -157,15 +169,18 @@ export default function AdminDashboard() {
                         <div className="flex items-center gap-3 mb-2">
                           <h3 className="text-lg font-semibold text-foreground">{course.title}</h3>
                           <Badge variant={
-                            course.level === 'Beginner' ? 'default' :
-                            course.level === 'Intermediate' ? 'secondary' : 'outline'
+                            course.skill_level === 'beginner' ? 'default' :
+                              course.skill_level === 'intermediate' ? 'secondary' : 'outline'
                           }>
-                            {course.level}
+                            {levelLabels[course.skill_level] || course.skill_level}
                           </Badge>
-                          {!course.is_published && (
+                          {course.status === 'draft' && (
                             <Badge variant="outline" className="text-muted-foreground">
                               Draft
                             </Badge>
+                          )}
+                          {course.is_free && (
+                            <Badge className="bg-primary">Free</Badge>
                           )}
                         </div>
                         <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
@@ -173,16 +188,12 @@ export default function AdminDashboard() {
                         </p>
                         <div className="flex items-center gap-4 text-sm text-muted-foreground">
                           <span>{getTotalLessons(course)} lessons</span>
-                          {course.instructor && (
-                            <span>
-                              By: {course.instructor.first_name} {course.instructor.last_name}
-                            </span>
-                          )}
+                          <span>{course.total_enrollments || 0} enrolled</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           size="sm"
                           onClick={() => navigate(`/admin/courses/${course.id}`)}
                         >
@@ -191,9 +202,9 @@ export default function AdminDashboard() {
                         </Button>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
+                            <Button
+                              variant="outline"
+                              size="sm"
                               className="text-destructive hover:text-destructive"
                               disabled={deleting === course.id}
                             >

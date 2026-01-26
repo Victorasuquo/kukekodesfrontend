@@ -1,14 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import api, { APICourse, APILesson } from '@/services/api';
-import { getYoutubeVideoId } from '@/services/api';
+import api, { Course, Module, Lesson, getYoutubeVideoId } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
   DialogContent,
@@ -28,69 +28,87 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Plus, Edit, Trash2, Play, Loader2 } from 'lucide-react';
+import { ArrowLeft, Plus, Edit, Trash2, Play, Loader2, FolderOpen, ChevronDown } from 'lucide-react';
+
+type SkillLevel = 'beginner' | 'intermediate' | 'advanced';
+
+const levelLabels: Record<SkillLevel, string> = {
+  beginner: 'Beginner',
+  intermediate: 'Intermediate',
+  advanced: 'Advanced',
+};
 
 export default function CourseEditor() {
   const { courseId } = useParams();
   const isNewCourse = courseId === 'new';
   const navigate = useNavigate();
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, isInstructor } = useAuth();
   const { toast } = useToast();
 
-  const [course, setCourse] = useState<APICourse | null>(null);
-  const [lessons, setLessons] = useState<APILesson[]>([]);
+  const [course, setCourse] = useState<Course | null>(null);
+  const [modules, setModules] = useState<Module[]>([]);
   const [loading, setLoading] = useState(!isNewCourse);
   const [saving, setSaving] = useState(false);
 
   // Course form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [level, setLevel] = useState<'Beginner' | 'Intermediate' | 'Advanced'>('Beginner');
-  const [isPublished, setIsPublished] = useState(false);
+  const [skillLevel, setSkillLevel] = useState<SkillLevel>('beginner');
+  const [category, setCategory] = useState('');
+  const [isFree, setIsFree] = useState(true);
+  const [status, setStatus] = useState<'draft' | 'published'>('draft');
+
+  // Module dialog state
+  const [moduleDialogOpen, setModuleDialogOpen] = useState(false);
+  const [editingModule, setEditingModule] = useState<Module | null>(null);
+  const [moduleTitle, setModuleTitle] = useState('');
+  const [moduleDescription, setModuleDescription] = useState('');
+  const [moduleOrder, setModuleOrder] = useState(1);
+  const [savingModule, setSavingModule] = useState(false);
 
   // Lesson dialog state
   const [lessonDialogOpen, setLessonDialogOpen] = useState(false);
-  const [editingLesson, setEditingLesson] = useState<APILesson | null>(null);
+  const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
+  const [lessonModuleId, setLessonModuleId] = useState<string>('');
   const [lessonTitle, setLessonTitle] = useState('');
   const [lessonDescription, setLessonDescription] = useState('');
-  const [lessonContent, setLessonContent] = useState('');
   const [lessonYoutubeUrl, setLessonYoutubeUrl] = useState('');
   const [lessonDuration, setLessonDuration] = useState(10);
   const [lessonOrder, setLessonOrder] = useState(1);
   const [savingLesson, setSavingLesson] = useState(false);
 
+  const fetchCourse = useCallback(async () => {
+    if (!courseId || isNewCourse) return;
+
+    try {
+      const courseData = await api.getCourse(courseId);
+      setCourse(courseData);
+      setModules(courseData.modules?.sort((a, b) => a.order - b.order) || []);
+      setTitle(courseData.title);
+      setDescription(courseData.description);
+      setSkillLevel(courseData.skill_level);
+      setCategory(courseData.category || '');
+      setIsFree(courseData.is_free);
+      setStatus(courseData.status);
+    } catch (error) {
+      console.error('Failed to fetch course:', error);
+      toast({ title: 'Error', description: 'Failed to load course', variant: 'destructive' });
+      navigate('/admin');
+    } finally {
+      setLoading(false);
+    }
+  }, [courseId, isNewCourse, navigate, toast]);
+
   useEffect(() => {
-    if (!user || !isAdmin) {
+    if (!user || (!isAdmin && !isInstructor)) {
       navigate('/auth');
       return;
     }
 
-    if (!isNewCourse && courseId) {
-      const fetchCourse = async () => {
-        try {
-          const [courseData, lessonsData] = await Promise.all([
-            api.getCourse(parseInt(courseId)),
-            api.getLessons(parseInt(courseId)),
-          ]);
-          setCourse(courseData);
-          setLessons(lessonsData.sort((a, b) => a.order - b.order));
-          setTitle(courseData.title);
-          setDescription(courseData.description);
-          setLevel(courseData.level);
-          setIsPublished(courseData.is_published);
-        } catch (error) {
-          console.error('Failed to fetch course:', error);
-          toast({ title: 'Error', description: 'Failed to load course', variant: 'destructive' });
-          navigate('/admin');
-        } finally {
-          setLoading(false);
-        }
-      };
-
-      fetchCourse();
-    }
-  }, [courseId, isNewCourse, user, isAdmin, navigate, toast]);
+    fetchCourse();
+  }, [user, isAdmin, isInstructor, navigate, fetchCourse]);
 
   const handleSaveCourse = async () => {
     if (!title.trim()) {
@@ -100,22 +118,21 @@ export default function CourseEditor() {
 
     setSaving(true);
     try {
+      const courseData = {
+        title,
+        description,
+        skill_level: skillLevel,
+        category: category || 'Programming',
+        is_free: isFree,
+        status,
+      };
+
       if (isNewCourse) {
-        const newCourse = await api.createCourse({ 
-          title, 
-          description, 
-          level, 
-          is_published: isPublished 
-        });
-        toast({ title: 'Course created!', description: 'Now add some lessons.' });
+        const newCourse = await api.createCourse(courseData);
+        toast({ title: 'Course created!', description: 'Now add some modules and lessons.' });
         navigate(`/admin/courses/${newCourse.id}`);
       } else if (courseId) {
-        await api.updateCourse(parseInt(courseId), { 
-          title, 
-          description, 
-          level, 
-          is_published: isPublished 
-        });
+        await api.updateCourse(courseId, courseData);
         toast({ title: 'Course updated!' });
       }
     } catch (error) {
@@ -125,13 +142,80 @@ export default function CourseEditor() {
     }
   };
 
+  // Module handlers
+  const openModuleDialog = (module?: Module) => {
+    if (module) {
+      setEditingModule(module);
+      setModuleTitle(module.title);
+      setModuleDescription(module.description);
+      setModuleOrder(module.order);
+    } else {
+      setEditingModule(null);
+      setModuleTitle('');
+      setModuleDescription('');
+      setModuleOrder(modules.length + 1);
+    }
+    setModuleDialogOpen(true);
+  };
+
+  const handleSaveModule = async () => {
+    if (!moduleTitle.trim()) {
+      toast({ title: 'Error', description: 'Module title is required', variant: 'destructive' });
+      return;
+    }
+
+    setSavingModule(true);
+    try {
+      if (editingModule) {
+        const updated = await api.updateModule(editingModule.id, {
+          title: moduleTitle,
+          description: moduleDescription,
+          order: moduleOrder,
+        });
+        setModules(prev =>
+          prev.map(m => m.id === editingModule.id ? { ...updated, lessons: m.lessons } : m)
+            .sort((a, b) => a.order - b.order)
+        );
+        toast({ title: 'Module updated!' });
+      } else {
+        const newModule = await api.createModule({
+          course_id: courseId!,
+          title: moduleTitle,
+          description: moduleDescription,
+          order: moduleOrder,
+        });
+        setModules(prev => [...prev, { ...newModule, lessons: [] }].sort((a, b) => a.order - b.order));
+        toast({ title: 'Module added!' });
+      }
+      setModuleDialogOpen(false);
+    } catch (error: any) {
+      console.error('Module save error:', error);
+      const errorMessage = error?.message || 'Failed to save module';
+      toast({ title: 'Error', description: errorMessage, variant: 'destructive' });
+    } finally {
+      setSavingModule(false);
+    }
+  };
+
+  const handleDeleteModule = async (moduleId: string) => {
+    try {
+      await api.deleteModule(moduleId);
+      setModules(prev => prev.filter(m => m.id !== moduleId));
+      toast({ title: 'Module deleted' });
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to delete module', variant: 'destructive' });
+    }
+  };
+
   // Lesson handlers
-  const openLessonDialog = (lesson?: APILesson) => {
+  const openLessonDialog = (moduleId: string, lesson?: Lesson) => {
+    setLessonModuleId(moduleId);
+    const module = modules.find(m => m.id === moduleId);
+
     if (lesson) {
       setEditingLesson(lesson);
       setLessonTitle(lesson.title);
       setLessonDescription(lesson.description);
-      setLessonContent(lesson.content || '');
       setLessonYoutubeUrl(lesson.youtube_url || '');
       setLessonDuration(lesson.duration_minutes);
       setLessonOrder(lesson.order);
@@ -139,10 +223,9 @@ export default function CourseEditor() {
       setEditingLesson(null);
       setLessonTitle('');
       setLessonDescription('');
-      setLessonContent('');
       setLessonYoutubeUrl('');
       setLessonDuration(10);
-      setLessonOrder(lessons.length + 1);
+      setLessonOrder((module?.lessons?.length || 0) + 1);
     }
     setLessonDialogOpen(true);
   };
@@ -160,26 +243,46 @@ export default function CourseEditor() {
 
     setSavingLesson(true);
     try {
-      const lessonData = {
-        course: parseInt(courseId!),
-        title: lessonTitle,
-        description: lessonDescription,
-        content: lessonContent,
-        youtube_url: lessonYoutubeUrl,
-        duration_minutes: lessonDuration,
-        order: lessonOrder,
-      };
-
       if (editingLesson) {
-        const updated = await api.updateLesson(editingLesson.id, lessonData);
-        setLessons(prev => prev.map(l => l.id === editingLesson.id ? updated : l).sort((a, b) => a.order - b.order));
+        const updated = await api.updateLesson(editingLesson.id, {
+          title: lessonTitle,
+          description: lessonDescription,
+          youtube_url: lessonYoutubeUrl || undefined,
+          duration_minutes: lessonDuration,
+          order: lessonOrder,
+        });
+
+        setModules(prev => prev.map(m => {
+          if (m.id === lessonModuleId) {
+            return {
+              ...m,
+              lessons: m.lessons.map(l => l.id === editingLesson.id ? updated : l)
+                .sort((a, b) => a.order - b.order),
+            };
+          }
+          return m;
+        }));
         toast({ title: 'Lesson updated!' });
       } else {
-        const newLesson = await api.createLesson(lessonData);
-        setLessons(prev => [...prev, newLesson].sort((a, b) => a.order - b.order));
+        const newLesson = await api.createLesson({
+          module_id: lessonModuleId,
+          title: lessonTitle,
+          description: lessonDescription,
+          youtube_url: lessonYoutubeUrl || undefined,
+          order: lessonOrder,
+        });
+
+        setModules(prev => prev.map(m => {
+          if (m.id === lessonModuleId) {
+            return {
+              ...m,
+              lessons: [...(m.lessons || []), newLesson].sort((a, b) => a.order - b.order),
+            };
+          }
+          return m;
+        }));
         toast({ title: 'Lesson added!' });
       }
-
       setLessonDialogOpen(false);
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to save lesson', variant: 'destructive' });
@@ -188,17 +291,22 @@ export default function CourseEditor() {
     }
   };
 
-  const handleDeleteLesson = async (lessonId: number) => {
+  const handleDeleteLesson = async (moduleId: string, lessonId: string) => {
     try {
       await api.deleteLesson(lessonId);
-      setLessons(prev => prev.filter(l => l.id !== lessonId));
+      setModules(prev => prev.map(m => {
+        if (m.id === moduleId) {
+          return { ...m, lessons: m.lessons.filter(l => l.id !== lessonId) };
+        }
+        return m;
+      }));
       toast({ title: 'Lesson deleted' });
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to delete lesson', variant: 'destructive' });
     }
   };
 
-  if (!user || !isAdmin) return null;
+  if (!user || (!isAdmin && !isInstructor)) return null;
 
   if (loading) {
     return (
@@ -214,8 +322,8 @@ export default function CourseEditor() {
       <header className="border-b border-border bg-card sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link 
-              to="/admin" 
+            <Link
+              to="/admin"
               className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -261,23 +369,34 @@ export default function CourseEditor() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="level">Level</Label>
-                <Select value={level} onValueChange={(v) => setLevel(v as typeof level)}>
+                <Label htmlFor="level">Skill Level</Label>
+                <Select value={skillLevel} onValueChange={(v) => setSkillLevel(v as SkillLevel)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Beginner">Beginner</SelectItem>
-                    <SelectItem value="Intermediate">Intermediate</SelectItem>
-                    <SelectItem value="Advanced">Advanced</SelectItem>
+                    <SelectItem value="beginner">Beginner</SelectItem>
+                    <SelectItem value="intermediate">Intermediate</SelectItem>
+                    <SelectItem value="advanced">Advanced</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="published">Status</Label>
-                <Select 
-                  value={isPublished ? 'published' : 'draft'} 
-                  onValueChange={(v) => setIsPublished(v === 'published')}
+                <Label htmlFor="category">Category</Label>
+                <Input
+                  id="category"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  placeholder="e.g., Programming, Web Development"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="status">Status</Label>
+                <Select
+                  value={status}
+                  onValueChange={(v) => setStatus(v as 'draft' | 'published')}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -288,80 +407,202 @@ export default function CourseEditor() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="flex items-center gap-3 pt-6">
+                <Switch
+                  id="is-free"
+                  checked={isFree}
+                  onCheckedChange={setIsFree}
+                />
+                <Label htmlFor="is-free">Free Course</Label>
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Lessons - Only show for existing courses */}
+        {/* Modules & Lessons - Only show for existing courses */}
         {!isNewCourse && (
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Lessons</CardTitle>
-              <Button size="sm" onClick={() => openLessonDialog()}>
+              <CardTitle>Modules & Lessons</CardTitle>
+              <Button size="sm" onClick={() => openModuleDialog()}>
                 <Plus className="w-4 h-4 mr-2" />
-                Add Lesson
+                Add Module
               </Button>
             </CardHeader>
             <CardContent>
-              {lessons.length === 0 ? (
+              {modules.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  <p>No lessons yet. Add your first lesson to get started.</p>
+                  <FolderOpen className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>No modules yet. Add your first module to get started.</p>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  {lessons.map((lesson, index) => (
-                    <div 
-                      key={lesson.id}
-                      className="flex items-center justify-between p-3 bg-muted/50 rounded-md"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Play className="w-4 h-4 text-primary" />
-                        <div>
-                          <p className="text-sm font-medium">
-                            {lesson.order}. {lesson.title}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {lesson.duration_minutes} min
-                          </p>
+                <Accordion type="multiple" className="space-y-2">
+                  {modules.map((module) => (
+                    <AccordionItem key={module.id} value={module.id} className="border rounded-lg px-4">
+                      <AccordionTrigger className="hover:no-underline">
+                        <div className="flex items-center gap-3 text-left">
+                          <span className="text-sm font-medium text-muted-foreground">
+                            {module.order}.
+                          </span>
+                          <span className="font-semibold">{module.title}</span>
+                          <span className="text-xs text-muted-foreground">
+                            ({module.lessons?.length || 0} lessons)
+                          </span>
                         </div>
-                      </div>
-                      <div className="flex gap-1">
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => openLessonDialog(lesson)}
-                        >
-                          <Edit className="w-3 h-3" />
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="sm" className="text-destructive">
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete Lesson</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Are you sure you want to delete this lesson?
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDeleteLesson(lesson.id)}>
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="pt-2 pb-4">
+                        <div className="flex items-center gap-2 mb-4">
+                          <Button variant="outline" size="sm" onClick={() => openModuleDialog(module)}>
+                            <Edit className="w-3 h-3 mr-1" />
+                            Edit Module
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openLessonDialog(module.id)}
+                          >
+                            <Plus className="w-3 h-3 mr-1" />
+                            Add Lesson
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="outline" size="sm" className="text-destructive">
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Module</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will delete the module and all its lessons. This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteModule(module.id)}>
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+
+                        {module.lessons?.length === 0 ? (
+                          <p className="text-sm text-muted-foreground py-2">
+                            No lessons in this module yet.
+                          </p>
+                        ) : (
+                          <div className="space-y-2">
+                            {module.lessons?.sort((a, b) => a.order - b.order).map((lesson) => (
+                              <div
+                                key={lesson.id}
+                                className="flex items-center justify-between p-3 bg-muted/50 rounded-md"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <Play className="w-4 h-4 text-primary" />
+                                  <div>
+                                    <p className="text-sm font-medium">
+                                      {lesson.order}. {lesson.title}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {lesson.duration_minutes} min
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => openLessonDialog(module.id, lesson)}
+                                  >
+                                    <Edit className="w-3 h-3" />
+                                  </Button>
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button variant="ghost" size="sm" className="text-destructive">
+                                        <Trash2 className="w-3 h-3" />
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Delete Lesson</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          Are you sure you want to delete this lesson?
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => handleDeleteLesson(module.id, lesson.id)}>
+                                          Delete
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </AccordionContent>
+                    </AccordionItem>
                   ))}
-                </div>
+                </Accordion>
               )}
             </CardContent>
           </Card>
         )}
+
+        {/* Module Dialog */}
+        <Dialog open={moduleDialogOpen} onOpenChange={setModuleDialogOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>{editingModule ? 'Edit Module' : 'Add Module'}</DialogTitle>
+              <DialogDescription>
+                Organize your course content into modules.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="module-title">Title</Label>
+                <Input
+                  id="module-title"
+                  value={moduleTitle}
+                  onChange={(e) => setModuleTitle(e.target.value)}
+                  placeholder="e.g., Getting Started"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="module-description">Description</Label>
+                <Textarea
+                  id="module-description"
+                  value={moduleDescription}
+                  onChange={(e) => setModuleDescription(e.target.value)}
+                  placeholder="What will students learn in this module?"
+                  rows={2}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="module-order">Order</Label>
+                <Input
+                  id="module-order"
+                  type="number"
+                  value={moduleOrder}
+                  onChange={(e) => setModuleOrder(parseInt(e.target.value) || 1)}
+                  min={1}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setModuleDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveModule} disabled={savingModule}>
+                {savingModule && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {editingModule ? 'Update' : 'Add'} Module
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Lesson Dialog */}
         <Dialog open={lessonDialogOpen} onOpenChange={setLessonDialogOpen}>
@@ -390,16 +631,6 @@ export default function CourseEditor() {
                   onChange={(e) => setLessonDescription(e.target.value)}
                   placeholder="Brief description of this lesson"
                   rows={2}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="lesson-content">Content (optional)</Label>
-                <Textarea
-                  id="lesson-content"
-                  value={lessonContent}
-                  onChange={(e) => setLessonContent(e.target.value)}
-                  placeholder="Additional lesson content or notes"
-                  rows={3}
                 />
               </div>
               <div className="space-y-2">

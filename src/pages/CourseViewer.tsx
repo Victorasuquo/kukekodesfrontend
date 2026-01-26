@@ -1,17 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import api, { APICourse, APILesson, APIUserProgress } from '@/services/api';
-import { getYoutubeVideoId } from '@/services/api';
+import api, { Course, Module, Lesson, getYoutubeVideoId } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ArrowLeft, CheckCircle, Circle, Loader2, BookOpen, MessageSquare, Terminal, FileQuestion } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Circle, Loader2, BookOpen, MessageSquare, Terminal, FileQuestion, ChevronDown, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AICoach, AITutor } from '@/components/sections/AICoach';
 import { CodeEditor } from '@/components/CodeEditor';
 import { Quiz } from '@/components/Quiz';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+
+interface LessonProgress {
+  lessonId: string;
+  completed: boolean;
+}
 
 export default function CourseViewer() {
   const { courseId } = useParams();
@@ -19,12 +24,22 @@ export default function CourseViewer() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const [course, setCourse] = useState<APICourse | null>(null);
-  const [lessons, setLessons] = useState<APILesson[]>([]);
-  const [currentLesson, setCurrentLesson] = useState<APILesson | null>(null);
-  const [userProgress, setUserProgress] = useState<APIUserProgress[]>([]);
+  const [course, setCourse] = useState<Course | null>(null);
+  const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
+  const [userProgress, setUserProgress] = useState<LessonProgress[]>([]);
   const [loading, setLoading] = useState(true);
   const [markingComplete, setMarkingComplete] = useState(false);
+  const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
+
+  // Flatten all lessons from modules for easy navigation
+  const allLessons = useMemo(() => {
+    if (!course?.modules) return [];
+    return course.modules
+      .sort((a, b) => a.order - b.order)
+      .flatMap(module =>
+        (module.lessons || []).sort((a, b) => a.order - b.order)
+      );
+  }, [course]);
 
   useEffect(() => {
     if (!user) {
@@ -35,24 +50,22 @@ export default function CourseViewer() {
     if (courseId) {
       const fetchCourse = async () => {
         try {
-          const [courseData, lessonsData, progressData] = await Promise.all([
-            api.getCourse(parseInt(courseId)),
-            api.getLessons(parseInt(courseId)),
-            api.getUserProgress().catch(() => []),
-          ]);
-
+          const courseData = await api.getCourse(courseId);
           setCourse(courseData);
-          setLessons(lessonsData.sort((a, b) => a.order - b.order));
-          setUserProgress(progressData);
 
-          // Set first incomplete lesson or first lesson
-          const lessonIds = lessonsData.map(l => l.id);
-          const completedLessonIds = progressData
-            .filter(p => lessonIds.includes(p.lesson) && p.completed)
-            .map(p => p.lesson);
+          // Expand all modules by default
+          const moduleIds = new Set(courseData.modules?.map(m => m.id) || []);
+          setExpandedModules(moduleIds);
 
-          const firstIncomplete = lessonsData.find(l => !completedLessonIds.includes(l.id));
-          setCurrentLesson(firstIncomplete || lessonsData[0] || null);
+          // Get lessons from modules
+          const lessons = courseData.modules
+            ?.sort((a, b) => a.order - b.order)
+            .flatMap(m => (m.lessons || []).sort((a, b) => a.order - b.order)) || [];
+
+          // Set first lesson
+          if (lessons.length > 0) {
+            setCurrentLesson(lessons[0]);
+          }
         } catch (error) {
           console.error('Failed to fetch course:', error);
           toast({ title: 'Error', description: 'Failed to load course', variant: 'destructive' });
@@ -65,14 +78,14 @@ export default function CourseViewer() {
     }
   }, [courseId, user, navigate, toast]);
 
-  const isLessonComplete = (lessonId: number) => {
-    return userProgress.some(p => p.lesson === lessonId && p.completed);
+  const isLessonComplete = (lessonId: string) => {
+    return userProgress.some(p => p.lessonId === lessonId && p.completed);
   };
 
   const getCourseProgressPercent = () => {
-    if (lessons.length === 0) return 0;
-    const completed = lessons.filter(l => isLessonComplete(l.id)).length;
-    return Math.round((completed / lessons.length) * 100);
+    if (allLessons.length === 0) return 0;
+    const completed = allLessons.filter(l => isLessonComplete(l.id)).length;
+    return Math.round((completed / allLessons.length) * 100);
   };
 
   const handleMarkComplete = async () => {
@@ -80,20 +93,33 @@ export default function CourseViewer() {
 
     setMarkingComplete(true);
     try {
-      const result = await api.markLessonComplete(currentLesson.id);
-      setUserProgress(prev => [...prev, result]);
+      // Mark lesson as complete in local state
+      // Note: Backend progress tracking API should be integrated here
+      setUserProgress(prev => [...prev, { lessonId: currentLesson.id, completed: true }]);
       toast({ title: 'Lesson completed!' });
 
       // Auto-advance to next lesson
-      const currentIndex = lessons.findIndex(l => l.id === currentLesson.id);
-      if (currentIndex < lessons.length - 1) {
-        setCurrentLesson(lessons[currentIndex + 1]);
+      const currentIndex = allLessons.findIndex(l => l.id === currentLesson.id);
+      if (currentIndex < allLessons.length - 1) {
+        setCurrentLesson(allLessons[currentIndex + 1]);
       }
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to mark lesson complete', variant: 'destructive' });
     } finally {
       setMarkingComplete(false);
     }
+  };
+
+  const toggleModule = (moduleId: string) => {
+    setExpandedModules(prev => {
+      const next = new Set(prev);
+      if (next.has(moduleId)) {
+        next.delete(moduleId);
+      } else {
+        next.add(moduleId);
+      }
+      return next;
+    });
   };
 
   if (loading) {
@@ -149,9 +175,6 @@ export default function CourseViewer() {
                   <TabsTrigger value="content" className="flex gap-2"><BookOpen className="w-4 h-4" /> Lesson</TabsTrigger>
                   <TabsTrigger value="code" className="flex gap-2"><Terminal className="w-4 h-4" /> Code</TabsTrigger>
                   <TabsTrigger value="ai" className="flex gap-2"><MessageSquare className="w-4 h-4" /> AI Tutor</TabsTrigger>
-                  {currentLesson.quizzes && currentLesson.quizzes.length > 0 && (
-                    <TabsTrigger value="quiz" className="flex gap-2"><FileQuestion className="w-4 h-4" /> Quiz</TabsTrigger>
-                  )}
                 </TabsList>
 
                 <TabsContent value="content" className="space-y-4">
@@ -178,8 +201,10 @@ export default function CourseViewer() {
                     </Button>
                   </div>
 
-                  {currentLesson.content && (
-                    <div className="prose dark:prose-invert max-w-none text-sm p-4 bg-muted/50 rounded-lg" dangerouslySetInnerHTML={{ __html: currentLesson.content }} />
+                  {currentLesson.transcript && (
+                    <div className="prose dark:prose-invert max-w-none text-sm p-4 bg-muted/50 rounded-lg">
+                      {currentLesson.transcript}
+                    </div>
                   )}
                 </TabsContent>
 
@@ -190,44 +215,57 @@ export default function CourseViewer() {
                 <TabsContent value="ai">
                   <AITutor lessonId={currentLesson.id} />
                 </TabsContent>
-
-                {currentLesson.quizzes && currentLesson.quizzes.length > 0 && (
-                  <TabsContent value="quiz">
-                    {currentLesson.quizzes.map(quiz => (
-                      <Quiz key={quiz.id} quizId={quiz.id} onComplete={handleMarkComplete} />
-                    ))}
-                  </TabsContent>
-                )}
               </Tabs>
             </div>
           )}
         </div>
 
-        {/* Sidebar */}
+        {/* Sidebar with Modules */}
         <ScrollArea className="w-full lg:w-80 border-l border-border bg-card">
           <div className="p-4">
             <h3 className="font-semibold text-foreground mb-4">Course Content</h3>
-            <div className="space-y-1">
-              {lessons.map((lesson, index) => {
-                const completed = isLessonComplete(lesson.id);
-                const isCurrent = currentLesson?.id === lesson.id;
-                return (
-                  <button
-                    key={lesson.id}
-                    onClick={() => setCurrentLesson(lesson)}
-                    className={`w-full text-left p-2 rounded-md text-sm flex items-center gap-2 transition-colors ${isCurrent ? 'bg-primary/10 text-primary' : 'hover:bg-muted'
-                      }`}
-                  >
-                    {completed ? (
-                      <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />
+            <div className="space-y-2">
+              {course.modules?.sort((a, b) => a.order - b.order).map((module) => (
+                <Collapsible
+                  key={module.id}
+                  open={expandedModules.has(module.id)}
+                  onOpenChange={() => toggleModule(module.id)}
+                >
+                  <CollapsibleTrigger className="w-full text-left p-2 rounded-md text-sm font-medium flex items-center gap-2 hover:bg-muted transition-colors">
+                    {expandedModules.has(module.id) ? (
+                      <ChevronDown className="w-4 h-4 text-muted-foreground" />
                     ) : (
-                      <Circle className="w-4 h-4 text-muted-foreground shrink-0" />
+                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
                     )}
-                    <span className="truncate">{index + 1}. {lesson.title}</span>
-                    <span className="text-xs text-muted-foreground ml-auto">{lesson.duration_minutes}m</span>
-                  </button>
-                );
-              })}
+                    <span className="flex-1 truncate">{module.order}. {module.title}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {module.lessons?.length || 0} lessons
+                    </span>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pl-6 space-y-1 mt-1">
+                    {module.lessons?.sort((a, b) => a.order - b.order).map((lesson) => {
+                      const completed = isLessonComplete(lesson.id);
+                      const isCurrent = currentLesson?.id === lesson.id;
+                      return (
+                        <button
+                          key={lesson.id}
+                          onClick={() => setCurrentLesson(lesson)}
+                          className={`w-full text-left p-2 rounded-md text-sm flex items-center gap-2 transition-colors ${isCurrent ? 'bg-primary/10 text-primary' : 'hover:bg-muted'
+                            }`}
+                        >
+                          {completed ? (
+                            <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />
+                          ) : (
+                            <Circle className="w-4 h-4 text-muted-foreground shrink-0" />
+                          )}
+                          <span className="truncate">{lesson.title}</span>
+                          <span className="text-xs text-muted-foreground ml-auto">{lesson.duration_minutes}m</span>
+                        </button>
+                      );
+                    })}
+                  </CollapsibleContent>
+                </Collapsible>
+              ))}
             </div>
           </div>
         </ScrollArea>

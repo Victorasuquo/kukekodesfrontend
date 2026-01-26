@@ -84,7 +84,7 @@ export function AICoach() {
 }
 
 // Function component to be used in CourseViewer
-export function AITutor({ lessonId }: { lessonId: number }) {
+export function AITutor({ lessonId }: { lessonId: string }) {
   const [messages, setMessages] = useState<{ role: 'user' | 'assistant', content: string }[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);

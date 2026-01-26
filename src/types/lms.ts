@@ -1,55 +1,103 @@
-// LMS Type Definitions - Consolidated API Types
-// These types match the Django backend API responses
+// LMS Type Definitions - FastAPI Backend Types
+// These types match the new FastAPI backend API responses
 
-// ============ User Types ============
+// ============ Auth Types ============
+export interface AuthToken {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  expires_in: number;
+}
+
 export interface User {
-  id: number;
-  username: string;
+  id: string;
   email: string;
   first_name: string;
   last_name: string;
-  is_instructor: boolean;
-  bio?: string;
-  profile_picture?: string;
+  username?: string;
+  profile_picture_url?: string;
+  country?: string;
+  role: 'student' | 'instructor' | 'admin';
+  is_active: boolean;
+  created_at: string;
 }
 
-export interface Instructor {
-  id: number;
-  username: string;
-  first_name: string;
-  last_name: string;
-  is_instructor: boolean;
+export interface AuthResponse {
+  user: User;
+  token: AuthToken;
+  message: string;
+}
+
+export interface RefreshTokenResponse {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
 }
 
 // ============ Course Types ============
 export interface Lesson {
-  id: number;
-  course: number;
+  id: string;
+  module_id: string;
   title: string;
   description: string;
-  content?: string;
   youtube_url?: string;
+  youtube_video_id?: string;
   duration_minutes: number;
+  thumbnail_url?: string;
+  transcript?: string;
+  resources?: Record<string, string>;
   order: number;
-  quizzes?: Quiz[];
+  status: 'draft' | 'published';
+  created_at: string;
+}
+
+export interface Module {
+  id: string;
+  course_id: string;
+  title: string;
+  description: string;
+  order: number;
+  lessons: Lesson[];
+  created_at: string;
 }
 
 export interface Course {
-  id: number;
+  id: string;
   title: string;
   description: string;
-  level: 'Beginner' | 'Intermediate' | 'Advanced';
-  thumbnail?: string;
-  instructor?: Instructor;
-  is_published: boolean;
-  lessons?: Lesson[];
+  tags: string[];
+  skill_level: 'beginner' | 'intermediate' | 'advanced';
+  category: string;
+  instructor_id: string;
+  status: 'draft' | 'published';
+  is_free: boolean;
+  cover_image_url?: string;
+  thumbnail_url?: string;
+  is_featured?: boolean;
+  average_rating?: string;
+  total_reviews?: number;
+  total_enrollments: number;
+  total_estimated_hours?: number;
+  modules?: Module[];
+  created_at: string;
+  published_at?: string;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  meta: {
+    total: number;
+    page: number;
+    page_size: number;
+    total_pages: number;
+  };
 }
 
 // ============ Progress Types ============
 export interface UserProgress {
-  id: number;
-  user: number;
-  lesson: number;
+  id: string;
+  user_id: string;
+  lesson_id: string;
   completed: boolean;
   last_watched?: string;
   completion_date?: string;
@@ -71,13 +119,13 @@ export interface CourseProgress {
 
 // ============ Quiz Types ============
 export interface Answer {
-  id: number;
+  id: string;
   answer_text: string;
   is_correct: boolean;
 }
 
 export interface Question {
-  id: number;
+  id: string;
   question_text: string;
   question_type: string;
   points: number;
@@ -85,8 +133,8 @@ export interface Question {
 }
 
 export interface Quiz {
-  id: number;
-  lesson: number;
+  id: string;
+  lesson_id: string;
   title: string;
   passing_score: number;
   questions?: Question[];
@@ -94,11 +142,11 @@ export interface Quiz {
 
 // ============ Live Session Types ============
 export interface LiveSession {
-  id: number;
+  id: string;
   title: string;
   description: string;
-  instructor?: Instructor;
-  course?: number;
+  instructor_id?: string;
+  course_id?: string;
   youtube_live_url?: string;
   scheduled_start: string;
   scheduled_end: string;
@@ -108,23 +156,23 @@ export interface LiveSession {
 
 // ============ Certificate & Badge Types ============
 export interface Certificate {
-  id: number;
-  user: number;
-  course: number;
+  id: string;
+  user_id: string;
+  course_id: string;
   issued_date: string;
   certificate_id: string;
 }
 
 export interface Badge {
-  id: number;
+  id: string;
   name: string;
   description: string;
-  icon?: string;
+  icon_url?: string;
 }
 
 export interface Streak {
-  id: number;
-  user: number;
+  id: string;
+  user_id: string;
   current_streak: number;
   longest_streak: number;
   last_activity_date: string;
@@ -132,18 +180,18 @@ export interface Streak {
 
 // ============ Forum Types ============
 export interface Thread {
-  id: number;
+  id: string;
   title: string;
   content: string;
-  author: { username: string; profile_picture?: string };
+  author: { id: string; username: string; profile_picture_url?: string };
   created_at: string;
   posts_count?: number;
-  course?: number;
+  course_id?: string;
 }
 
 // ============ Code Execution Types ============
 export interface CodeSubmissionResponse {
-  submission_id: number;
+  submission_id: string;
   status: string;
 }
 
@@ -156,24 +204,31 @@ export interface SubmissionStatus {
 // ============ AI Types ============
 export interface AIResponse {
   answer: string;
-  conversation_id: number;
+  conversation_id: string;
 }
 
-// ============ Auth Types ============
-export interface AuthResult {
+// ============ API Standard Responses ============
+export interface SuccessResponse {
   success: boolean;
-  status?: number;
-  data?: unknown;
+  message: string;
+}
+
+export interface ErrorResponse {
+  detail: string;
+  error_code?: string;
 }
 
 // ============ Frontend User (mapped) ============
 export interface AppUser {
-  id: number;
+  id: string;
   username: string;
   email: string;
   name: string;
-  role: 'admin' | 'user';
-  isInstructor: boolean;
-  bio?: string;
+  role: 'admin' | 'instructor' | 'student';
   profilePicture?: string;
+  country?: string;
 }
+
+// Legacy compatibility
+export type Instructor = Pick<User, 'id' | 'first_name' | 'last_name' | 'email'>;
+export type AuthResult = { success: boolean; error?: string };

@@ -59,4 +59,25 @@ The build artifacts will be stored in the `dist/` directory.
 
 ## Backend Integration
 
-This frontend is designed to work with a Django backend. Ensure your backend is running and the `API_BASE_URL` in `src/services/api.ts` is correctly configured (default: `https://linkup-neon-ten.vercel.app`).
+This frontend is designed to work with a REST API backend. To configure:
+
+1. **Development (Vite Proxy)**: Edit `vite.config.ts` and add proxy rules:
+   ```ts
+   proxy: {
+     '/api': {
+       target: 'YOUR_BACKEND_URL',
+       changeOrigin: true,
+     },
+   }
+   ```
+
+2. **Production (Vercel)**: Edit `vercel.json` and add rewrite rules:
+   ```json
+   {
+     "source": "/api/:path*",
+     "destination": "YOUR_BACKEND_URL/api/:path*"
+   }
+   ```
+
+The API service (`src/services/api.ts`) uses relative URLs for all requests.
+

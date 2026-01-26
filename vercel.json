@@ -1,24 +1,12 @@
 {
     "rewrites": [
         {
-            "source": "/api/:path*",
-            "destination": "https://linkup-neon-ten.vercel.app/api/:path*"
+            "source": "/api/v1/:path*",
+            "destination": "https://kukekodesbackend-714266210254.europe-west1.run.app/api/v1/:path*"
         },
         {
-            "source": "/users/:path*",
-            "destination": "https://linkup-neon-ten.vercel.app/users/:path*"
-        },
-        {
-            "source": "/courses/run-code/:path*",
-            "destination": "https://linkup-neon-ten.vercel.app/courses/run-code/:path*"
-        },
-        {
-            "source": "/courses/ai-query/:path*",
-            "destination": "https://linkup-neon-ten.vercel.app/courses/ai-query/:path*"
-        },
-        {
-            "source": "/courses/submission-status/:path*",
-            "destination": "https://linkup-neon-ten.vercel.app/courses/submission-status/:path*"
+            "source": "/health",
+            "destination": "https://kukekodesbackend-714266210254.europe-west1.run.app/health"
         },
         {
             "source": "/(.*)",

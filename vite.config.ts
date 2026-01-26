@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 
+const BACKEND_URL = 'https://kukekodesbackend-714266210254.europe-west1.run.app';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
@@ -9,30 +10,15 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 8080,
     proxy: {
-      '/api': {
-        target: 'https://linkup-neon-ten.vercel.app',
+      '/api/v1': {
+        target: BACKEND_URL,
         changeOrigin: true,
-        secure: false,
+        secure: true,
       },
-      '/users': {
-        target: 'https://linkup-neon-ten.vercel.app',
+      '/health': {
+        target: BACKEND_URL,
         changeOrigin: true,
-        secure: false,
-      },
-      '/courses/run-code': {
-        target: 'https://linkup-neon-ten.vercel.app',
-        changeOrigin: true,
-        secure: false,
-      },
-      '/courses/ai-query': {
-        target: 'https://linkup-neon-ten.vercel.app',
-        changeOrigin: true,
-        secure: false,
-      },
-      '/courses/submission-status': {
-        target: 'https://linkup-neon-ten.vercel.app',
-        changeOrigin: true,
-        secure: false,
+        secure: true,
       },
     },
   },

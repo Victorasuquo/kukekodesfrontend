@@ -10,28 +10,38 @@ import { CourseCardSkeleton } from '@/components/ui/card-skeleton';
 import { BookOpen, Clock, Users, ArrowRight, BarChart3 } from 'lucide-react';
 import coursePython from '@/assets/course-python.jpg';
 
+// Map skill_level to display text
+const levelLabels: Record<string, string> = {
+    beginner: 'Beginner',
+    intermediate: 'Intermediate',
+    advanced: 'Advanced',
+};
+
 export default function CoursesPage() {
     const [courses, setCourses] = useState<Course[]>([]);
     const [loading, setLoading] = useState(true);
-    const [filter, setFilter] = useState<'all' | 'Beginner' | 'Intermediate' | 'Advanced'>('all');
+    const [filter, setFilter] = useState<'all' | 'beginner' | 'intermediate' | 'advanced'>('all');
 
     useEffect(() => {
         const fetchCourses = async () => {
             try {
-                const data = await api.getCourses();
-                setCourses(data);
+                const params = filter === 'all' ? {} : { skill_level: filter };
+                const response = await api.getCourses(params);
+                setCourses(response.data || []);
             } catch (error) {
-                // Error handled by logger in api.ts
+                console.error('Failed to fetch courses', error);
             } finally {
                 setLoading(false);
             }
         };
         fetchCourses();
-    }, []);
+    }, [filter]);
 
-    const filteredCourses = filter === 'all'
-        ? courses
-        : courses.filter(c => c.level === filter);
+    // Count total lessons from modules
+    const getLessonCount = (course: Course): number => {
+        if (!course.modules) return 0;
+        return course.modules.reduce((total, module) => total + (module.lessons?.length || 0), 0);
+    };
 
     return (
         <div className="min-h-screen flex flex-col bg-background">
@@ -50,14 +60,14 @@ export default function CoursesPage() {
 
                 {/* Filters */}
                 <div className="flex flex-wrap justify-center gap-2 mb-8">
-                    {(['all', 'Beginner', 'Intermediate', 'Advanced'] as const).map((level) => (
+                    {(['all', 'beginner', 'intermediate', 'advanced'] as const).map((level) => (
                         <Button
                             key={level}
                             variant={filter === level ? 'default' : 'outline'}
                             size="sm"
                             onClick={() => setFilter(level)}
                         >
-                            {level === 'all' ? 'All Levels' : level}
+                            {level === 'all' ? 'All Levels' : levelLabels[level]}
                         </Button>
                     ))}
                 </div>
@@ -65,17 +75,17 @@ export default function CoursesPage() {
                 {/* Course Grid */}
                 {loading ? (
                     <CourseCardSkeleton />
-                ) : filteredCourses.length === 0 ? (
+                ) : courses.length === 0 ? (
                     <div className="text-center py-12">
                         <BookOpen className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
                         <h3 className="text-lg font-medium">No courses found</h3>
                         <p className="text-muted-foreground">
-                            {filter === 'all' ? 'Check back soon for new content!' : `No ${filter} courses available yet.`}
+                            {filter === 'all' ? 'Check back soon for new content!' : `No ${levelLabels[filter]} courses available yet.`}
                         </p>
                     </div>
                 ) : (
                     <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {filteredCourses.map((course) => (
+                        {courses.map((course) => (
                             <Card
                                 key={course.id}
                                 className="group overflow-hidden hover:border-primary/50 transition-all duration-300 hover:shadow-xl hover:shadow-primary/5 flex flex-col"
@@ -83,7 +93,7 @@ export default function CoursesPage() {
                                 {/* Thumbnail */}
                                 <div className="relative h-48 overflow-hidden">
                                     <img
-                                        src={course.thumbnail || coursePython}
+                                        src={course.thumbnail_url || course.cover_image_url || coursePython}
                                         alt={course.title}
                                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                                     />
@@ -92,8 +102,15 @@ export default function CoursesPage() {
                                     {/* Level Badge */}
                                     <Badge className="absolute top-4 left-4 bg-card/90 backdrop-blur-sm text-foreground border-border/50">
                                         <BarChart3 className="w-3 h-3 mr-1" />
-                                        {course.level}
+                                        {levelLabels[course.skill_level] || course.skill_level}
                                     </Badge>
+
+                                    {/* Free Badge */}
+                                    {course.is_free && (
+                                        <Badge className="absolute top-4 right-4 bg-primary/90 text-primary-foreground">
+                                            Free
+                                        </Badge>
+                                    )}
                                 </div>
 
                                 <CardContent className="p-6 flex flex-col flex-1">
@@ -106,15 +123,13 @@ export default function CoursesPage() {
 
                                     {/* Stats */}
                                     <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
-                                        {course.instructor && (
-                                            <div className="flex items-center gap-1">
-                                                <Users className="w-4 h-4" />
-                                                {course.instructor.first_name}
-                                            </div>
-                                        )}
+                                        <div className="flex items-center gap-1">
+                                            <Users className="w-4 h-4" />
+                                            {course.total_enrollments || 0} enrolled
+                                        </div>
                                         <div className="flex items-center gap-1">
                                             <Clock className="w-4 h-4" />
-                                            {course.lessons?.length || 0} lessons
+                                            {getLessonCount(course)} lessons
                                         </div>
                                     </div>
 

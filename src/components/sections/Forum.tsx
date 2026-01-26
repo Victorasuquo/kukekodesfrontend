@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import api, { Thread } from '@/services/api';
+import api from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,7 +11,14 @@ import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { ThreadCardSkeleton } from '@/components/ui/card-skeleton';
 
-
+// Thread type for forum
+interface Thread {
+    id: string;
+    title: string;
+    author: string;
+    replies_count: number;
+    created_at: string;
+}
 
 export function Forum() {
     const [threads, setThreads] = useState<Thread[]>([]);
@@ -27,7 +34,6 @@ export function Forum() {
             const data = await api.getThreads();
             setThreads(data);
         } catch (error) {
-            // Error logged by api.ts
             toast({ title: 'Error', description: 'Failed to load forum threads', variant: 'destructive' });
         } finally {
             setLoading(false);
@@ -40,17 +46,13 @@ export function Forum() {
 
     const handleCreateThread = async () => {
         try {
-            const formData = new FormData();
-            formData.append('title', title);
-            formData.append('content', content);
-
-            await api.createThread(formData);
+            await api.createThread(title, content);
 
             toast({ title: 'Success', description: 'Thread created successfully' });
             setNewThreadOpen(false);
             setTitle('');
             setContent('');
-            fetchThreads(); // Refresh list
+            fetchThreads();
         } catch (error) {
             toast({ title: 'Error', description: 'Failed to create thread', variant: 'destructive' });
         }
@@ -82,73 +84,73 @@ export function Forum() {
                     <DialogContent>
                         <DialogHeader>
                             <DialogTitle>Create New Thread</DialogTitle>
-                            <DialogDescription>Start a discussion with the community.</DialogDescription>
+                            <DialogDescription>Start a new discussion in the community.</DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4 py-4">
                             <div className="space-y-2">
+                                <label htmlFor="thread-title" className="text-sm font-medium">Title</label>
                                 <Input
-                                    placeholder="Thread Title"
+                                    id="thread-title"
                                     value={title}
                                     onChange={(e) => setTitle(e.target.value)}
+                                    placeholder="What's your question or topic?"
                                 />
                             </div>
                             <div className="space-y-2">
+                                <label htmlFor="thread-content" className="text-sm font-medium">Content</label>
                                 <Textarea
-                                    placeholder="What's on your mind?"
-                                    rows={5}
+                                    id="thread-content"
                                     value={content}
                                     onChange={(e) => setContent(e.target.value)}
+                                    placeholder="Provide more details..."
+                                    rows={4}
                                 />
                             </div>
                         </div>
                         <DialogFooter>
-                            <Button onClick={handleCreateThread}>Post Thread</Button>
+                            <Button variant="outline" onClick={() => setNewThreadOpen(false)}>Cancel</Button>
+                            <Button onClick={handleCreateThread} disabled={!title.trim()}>Create Thread</Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
             </div>
 
-            <div className="grid gap-4">
-                {threads.length === 0 ? (
-                    <div className="text-center py-12 bg-muted/30 rounded-lg">
-                        <MessageSquare className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                        <h3 className="text-lg font-medium">No threads yet</h3>
-                        <p className="text-muted-foreground">Be the first to start a conversation!</p>
-                    </div>
-                ) : (
-                    threads.map(thread => (
+            {threads.length === 0 ? (
+                <Card className="p-12 text-center">
+                    <MessageSquare className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-medium text-foreground mb-2">No threads yet</h3>
+                    <p className="text-muted-foreground mb-4">Be the first to start a discussion!</p>
+                    <Button onClick={() => setNewThreadOpen(true)}>
+                        <Plus className="w-4 h-4 mr-2" /> Create Thread
+                    </Button>
+                </Card>
+            ) : (
+                <div className="space-y-4">
+                    {threads.map((thread) => (
                         <Card key={thread.id} className="hover:border-primary/50 transition-colors cursor-pointer">
-                            <CardHeader className="pb-3">
-                                <div className="flex justify-between items-start">
-                                    <div className="flex items-start gap-4">
-                                        <Avatar className="w-10 h-10 border">
-                                            <AvatarImage src={thread.author?.profile_picture} />
-                                            <AvatarFallback>{thread.author?.username?.substring(0, 2).toUpperCase() || 'US'}</AvatarFallback>
-                                        </Avatar>
-                                        <div>
-                                            <CardTitle className="text-lg">{thread.title}</CardTitle>
-                                            <CardDescription>
-                                                Posted by <span className="font-medium text-foreground">{thread.author?.username || 'Unknown'}</span> • {thread.created_at ? formatDistanceToNow(new Date(thread.created_at), { addSuffix: true }) : 'Recently'}
-                                            </CardDescription>
+                            <CardContent className="p-4">
+                                <div className="flex items-start gap-4">
+                                    <Avatar className="w-10 h-10">
+                                        <AvatarFallback>{thread.author?.charAt(0)?.toUpperCase() || 'U'}</AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex-1">
+                                        <h3 className="font-semibold text-foreground">{thread.title}</h3>
+                                        <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                                            <span>{thread.author}</span>
+                                            <span>•</span>
+                                            <span>{formatDistanceToNow(new Date(thread.created_at), { addSuffix: true })}</span>
                                         </div>
                                     </div>
-                                    {thread.course && (
-                                        <div className="text-xs bg-muted px-2 py-1 rounded">Course #{thread.course}</div>
-                                    )}
+                                    <div className="flex items-center gap-1 text-muted-foreground">
+                                        <MessageSquare className="w-4 h-4" />
+                                        <span className="text-sm">{thread.replies_count}</span>
+                                    </div>
                                 </div>
-                            </CardHeader>
-                            <CardContent>
-                                <p className="text-muted-foreground line-clamp-2">{thread.content}</p>
                             </CardContent>
-                            <CardFooter className="pt-0 text-sm text-muted-foreground">
-                                <div className="flex items-center gap-4">
-                                    <span className="flex items-center gap-1"><MessageSquare className="w-4 h-4" /> Comments</span>
-                                </div>
-                            </CardFooter>
                         </Card>
-                    ))
-                )}
-            </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }
