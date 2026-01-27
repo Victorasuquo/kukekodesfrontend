@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import api from '@/services/api';
+import api, { APIQuiz, APIUserProgress } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -9,34 +9,14 @@ import { useToast } from '@/hooks/use-toast';
 import { Progress } from '@/components/ui/progress';
 
 interface QuizProps {
-    quizId: string;
+    quizId: number;
     onComplete?: () => void;
 }
 
-// Quiz types defined locally since not yet in main types
-interface QuizAnswer {
-    id: string;
-    answer_text: string;
-    is_correct: boolean;
-}
-
-interface QuizQuestion {
-    id: string;
-    question_text: string;
-    answers: QuizAnswer[];
-}
-
-interface Quiz {
-    id: string;
-    title: string;
-    passing_score: number;
-    questions: QuizQuestion[];
-}
-
 export function Quiz({ quizId, onComplete }: QuizProps) {
-    const [quiz, setQuiz] = useState<Quiz | null>(null);
+    const [quiz, setQuiz] = useState<APIQuiz | null>(null);
     const [loading, setLoading] = useState(true);
-    const [answers, setAnswers] = useState<Record<string, string>>({});
+    const [answers, setAnswers] = useState<Record<number, number>>({});
     const [submitted, setSubmitted] = useState(false);
     const [score, setScore] = useState(0);
     const [passed, setPassed] = useState(false);
@@ -50,7 +30,7 @@ export function Quiz({ quizId, onComplete }: QuizProps) {
                 setQuiz(data);
             } catch (error) {
                 console.error("Failed to fetch quiz:", error);
-                toast({ title: 'Coming Soon', description: 'Quiz feature is coming soon!', variant: 'default' });
+                toast({ title: 'Error', description: 'Failed to load quiz', variant: 'destructive' });
             } finally {
                 setLoading(false);
             }
@@ -59,7 +39,7 @@ export function Quiz({ quizId, onComplete }: QuizProps) {
         fetchQuiz();
     }, [quizId, toast]);
 
-    const handleOptionSelect = (questionId: string, answerId: string) => {
+    const handleOptionSelect = (questionId: number, answerId: number) => {
         if (submitted) return;
         setAnswers(prev => ({ ...prev, [questionId]: answerId }));
     };
@@ -108,14 +88,7 @@ export function Quiz({ quizId, onComplete }: QuizProps) {
         );
     }
 
-    if (!quiz) {
-        return (
-            <div className="text-center p-8 text-muted-foreground">
-                <AlertCircle className="w-8 h-8 mx-auto mb-2" />
-                <p>Quiz not available yet. Coming soon!</p>
-            </div>
-        );
-    }
+    if (!quiz) return null;
 
     return (
         <div className="space-y-6 max-w-3xl mx-auto">
@@ -142,7 +115,7 @@ export function Quiz({ quizId, onComplete }: QuizProps) {
                     <CardContent>
                         <RadioGroup
                             value={answers[question.id]?.toString()}
-                            onValueChange={(val) => handleOptionSelect(question.id, val)}
+                            onValueChange={(val) => handleOptionSelect(question.id, parseInt(val))}
                         >
                             <div className="space-y-3">
                                 {question.answers?.map((answer) => {

@@ -2,7 +2,8 @@ import { motion } from "framer-motion";
 import { Clock, BarChart3, Users, ArrowRight, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
-import api, { Course } from "@/services/api";
+import api from "@/services/api";
+import type { Course } from "@/services/api";
 import coursePython from "@/assets/course-python.jpg";
 import { ScrollReveal, StaggerContainer, StaggerItem } from "@/components/ui/scroll-reveal";
 import { Link } from "react-router-dom";
@@ -24,10 +25,11 @@ export function Courses() {
     const fetchCourses = async () => {
       try {
         const response = await api.getCourses({ page_size: 6 });
-        setCourses(response.data || []);
+        // API returns { data: Course[], meta: {...} } - handle gracefully
+        setCourses(response?.data || []);
       } catch (error) {
-        // Error logged by api.ts
         console.error('Failed to fetch courses', error);
+        setCourses([]);
       } finally {
         setLoading(false);
       }
@@ -143,7 +145,7 @@ export function Courses() {
                       <div className="space-y-2 mb-6">
                         <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                           <motion.div
-                            className={`h-full bg-primary`}
+                            className="h-full bg-primary"
                             initial={{ width: 0 }}
                             animate={{ width: hoveredIndex === index ? "100%" : "0%" }}
                             transition={{ duration: 0.6, ease: "easeOut" }}

@@ -1,244 +1,250 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { Navbar } from '@/components/layout/Navbar';
 import { useAuth } from '@/contexts/AuthContext';
-import api, { Course } from '@/services/api';
+import api from '@/services/api';
+import type { Course } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import { useToast } from '@/hooks/use-toast';
-import { Plus, Edit, Trash2, BookOpen, LogOut, Loader2 } from 'lucide-react';
+    Plus, BookOpen, Users, Edit, Trash2, Eye, ArrowLeft, Search
+} from 'lucide-react';
+import coursePython from '@/assets/course-python.jpg';
 
-// Map skill_level to display text
 const levelLabels: Record<string, string> = {
-  beginner: 'Beginner',
-  intermediate: 'Intermediate',
-  advanced: 'Advanced',
+    beginner: 'Beginner',
+    intermediate: 'Intermediate',
+    advanced: 'Advanced',
 };
 
 export default function AdminDashboard() {
-  const { user, logout, isAdmin, isInstructor } = useAuth();
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [deleting, setDeleting] = useState<string | null>(null);
+    const { user, isAdmin, isInstructor } = useAuth();
+    const navigate = useNavigate();
+    const [courses, setCourses] = useState<Course[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => {
-    if (!user) {
-      navigate('/auth');
-      return;
-    }
-    if (!isAdmin && !isInstructor) {
-      navigate('/dashboard');
-      return;
-    }
+    useEffect(() => {
+        if (!user || (!isAdmin && !isInstructor)) {
+            navigate('/dashboard');
+            return;
+        }
 
-    const fetchCourses = async () => {
-      try {
-        const response = await api.getCourses();
-        setCourses(response.data || []);
-      } catch (error) {
-        console.error('Failed to fetch courses:', error);
-        toast({ title: 'Error', description: 'Failed to load courses', variant: 'destructive' });
-      } finally {
-        setLoading(false);
-      }
+        const fetchCourses = async () => {
+            try {
+                const response = await api.getCourses({ page_size: 50 });
+                setCourses(response?.data || []);
+            } catch (error) {
+                console.error('Failed to fetch courses', error);
+                setCourses([]);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchCourses();
+    }, [user, isAdmin, isInstructor, navigate]);
+
+    const filteredCourses = courses.filter(course =>
+        course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        course.description.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    const handleDeleteCourse = async (courseId: string) => {
+        if (!confirm('Are you sure you want to delete this course?')) return;
+
+        try {
+            await api.deleteCourse(courseId);
+            setCourses(prev => prev.filter(c => c.id !== courseId));
+        } catch (error) {
+            console.error('Failed to delete course', error);
+        }
     };
 
-    fetchCourses();
-  }, [user, isAdmin, isInstructor, navigate, toast]);
-
-  const handleDeleteCourse = async (courseId: string) => {
-    setDeleting(courseId);
-    try {
-      await api.deleteCourse(courseId);
-      setCourses(prev => prev.filter(c => c.id !== courseId));
-      toast({ title: 'Course deleted', description: 'The course has been removed.' });
-    } catch (error) {
-      toast({ title: 'Error', description: 'Failed to delete course', variant: 'destructive' });
-    } finally {
-      setDeleting(null);
+    if (!user || (!isAdmin && !isInstructor)) {
+        return null;
     }
-  };
 
-  const handleLogout = async () => {
-    await logout();
-    navigate('/');
-  };
-
-  // Count total lessons from all modules
-  const getTotalLessons = (course: Course): number => {
-    if (!course.modules) return 0;
-    return course.modules.reduce((total, module) => total + (module.lessons?.length || 0), 0);
-  };
-
-  // Get total lessons across all courses
-  const getTotalLessonsAll = (): number => {
-    return courses.reduce((acc, course) => acc + getTotalLessons(course), 0);
-  };
-
-  if (!user || (!isAdmin && !isInstructor)) return null;
-
-  if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+        <div className="min-h-screen bg-background">
+            <Navbar />
 
-  return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link to="/" className="text-xl font-bold text-primary">KukeKodes</Link>
-            <Badge variant="secondary">{isAdmin ? 'Admin' : 'Instructor'}</Badge>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">{user.email}</span>
-            <Button variant="ghost" size="sm" onClick={handleLogout}>
-              <LogOut className="w-4 h-4 mr-2" />
-              Logout
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      <main className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Admin Dashboard</h1>
-            <p className="text-muted-foreground mt-1">Manage your courses and lessons</p>
-          </div>
-          <Button onClick={() => navigate('/admin/courses/new')}>
-            <Plus className="w-4 h-4 mr-2" />
-            New Course
-          </Button>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Total Courses</CardDescription>
-              <CardTitle className="text-3xl">{courses.length}</CardTitle>
-            </CardHeader>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Total Lessons</CardDescription>
-              <CardTitle className="text-3xl">{getTotalLessonsAll()}</CardTitle>
-            </CardHeader>
-          </Card>
-        </div>
-
-        {/* Courses List */}
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold text-foreground">All Courses</h2>
-
-          {courses.length === 0 ? (
-            <Card className="p-12 text-center">
-              <BookOpen className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium text-foreground mb-2">No courses yet</h3>
-              <p className="text-muted-foreground mb-4">Create your first course to get started</p>
-              <Button onClick={() => navigate('/admin/courses/new')}>
-                <Plus className="w-4 h-4 mr-2" />
-                Create Course
-              </Button>
-            </Card>
-          ) : (
-            <div className="grid gap-4">
-              {courses.map((course) => (
-                <Card key={course.id} className="hover:border-primary/50 transition-colors">
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-lg font-semibold text-foreground">{course.title}</h3>
-                          <Badge variant={
-                            course.skill_level === 'beginner' ? 'default' :
-                              course.skill_level === 'intermediate' ? 'secondary' : 'outline'
-                          }>
-                            {levelLabels[course.skill_level] || course.skill_level}
-                          </Badge>
-                          {course.status === 'draft' && (
-                            <Badge variant="outline" className="text-muted-foreground">
-                              Draft
-                            </Badge>
-                          )}
-                          {course.is_free && (
-                            <Badge className="bg-primary">Free</Badge>
-                          )}
-                        </div>
-                        <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
-                          {course.description}
-                        </p>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <span>{getTotalLessons(course)} lessons</span>
-                          <span>{course.total_enrollments || 0} enrolled</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => navigate(`/admin/courses/${course.id}`)}
-                        >
-                          <Edit className="w-4 h-4 mr-2" />
-                          Edit
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-destructive hover:text-destructive"
-                              disabled={deleting === course.id}
-                            >
-                              {deleting === course.id ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                              ) : (
-                                <Trash2 className="w-4 h-4" />
-                              )}
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete Course</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Are you sure you want to delete "{course.title}"? This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDeleteCourse(course.id)}>
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
+            <main className="container mx-auto px-4 py-8 pt-24">
+                {/* Header */}
+                <div className="flex items-center gap-4 mb-6">
+                    <Link
+                        to="/dashboard"
+                        className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                        <ArrowLeft className="w-4 h-4" />
+                    </Link>
+                    <div className="flex-1">
+                        <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+                        <p className="text-muted-foreground">Manage courses, modules, and lessons</p>
                     </div>
-                  </CardContent>
+                </div>
+
+                {/* Stats */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                    <Card>
+                        <CardContent className="p-6">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                                    <BookOpen className="w-6 h-6 text-primary" />
+                                </div>
+                                <div>
+                                    <p className="text-2xl font-bold">{courses.length}</p>
+                                    <p className="text-sm text-muted-foreground">Total Courses</p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardContent className="p-6">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center">
+                                    <Eye className="w-6 h-6 text-green-500" />
+                                </div>
+                                <div>
+                                    <p className="text-2xl font-bold">
+                                        {courses.filter(c => c.status === 'published').length}
+                                    </p>
+                                    <p className="text-sm text-muted-foreground">Published</p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardContent className="p-6">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-xl bg-yellow-500/10 flex items-center justify-center">
+                                    <Edit className="w-6 h-6 text-yellow-500" />
+                                </div>
+                                <div>
+                                    <p className="text-2xl font-bold">
+                                        {courses.filter(c => c.status === 'draft').length}
+                                    </p>
+                                    <p className="text-sm text-muted-foreground">Drafts</p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardContent className="p-6">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                                    <Users className="w-6 h-6 text-blue-500" />
+                                </div>
+                                <div>
+                                    <p className="text-2xl font-bold">
+                                        {courses.reduce((sum, c) => sum + (c.total_enrollments || 0), 0)}
+                                    </p>
+                                    <p className="text-sm text-muted-foreground">Total Enrollments</p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Course Management */}
+                <Card>
+                    <CardHeader>
+                        <div className="flex flex-col md:flex-row justify-between gap-4">
+                            <div>
+                                <CardTitle>Courses</CardTitle>
+                                <CardDescription>Create and manage your courses</CardDescription>
+                            </div>
+                            <div className="flex gap-2">
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                    <Input
+                                        placeholder="Search courses..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="pl-9 w-[200px]"
+                                    />
+                                </div>
+                                <Button asChild>
+                                    <Link to="/admin/courses/new">
+                                        <Plus className="w-4 h-4 mr-2" />
+                                        New Course
+                                    </Link>
+                                </Button>
+                            </div>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        {loading ? (
+                            <div className="text-center py-12">
+                                <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto"></div>
+                            </div>
+                        ) : filteredCourses.length === 0 ? (
+                            <div className="text-center py-12">
+                                <BookOpen className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                                <h3 className="text-lg font-medium mb-2">No courses found</h3>
+                                <p className="text-muted-foreground mb-4">
+                                    {searchQuery ? 'Try a different search term' : 'Create your first course to get started'}
+                                </p>
+                                <Button asChild>
+                                    <Link to="/admin/courses/new">
+                                        <Plus className="w-4 h-4 mr-2" />
+                                        Create Course
+                                    </Link>
+                                </Button>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                {filteredCourses.map((course) => (
+                                    <div
+                                        key={course.id}
+                                        className="flex items-center gap-4 p-4 border rounded-lg hover:border-primary/50 transition-colors"
+                                    >
+                                        <img
+                                            src={course.thumbnail_url || course.cover_image_url || coursePython}
+                                            alt={course.title}
+                                            className="w-20 h-14 object-cover rounded"
+                                        />
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <h3 className="font-semibold truncate">{course.title}</h3>
+                                                <Badge variant={course.status === 'published' ? 'default' : 'secondary'}>
+                                                    {course.status}
+                                                </Badge>
+                                            </div>
+                                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                                <span>{levelLabels[course.skill_level] || course.skill_level}</span>
+                                                <span>{course.modules?.length || 0} modules</span>
+                                                <span>{course.total_enrollments || 0} enrolled</span>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Button variant="ghost" size="icon" asChild>
+                                                <Link to={`/courses/${course.id}`}>
+                                                    <Eye className="w-4 h-4" />
+                                                </Link>
+                                            </Button>
+                                            <Button variant="ghost" size="icon" asChild>
+                                                <Link to={`/admin/courses/${course.id}`}>
+                                                    <Edit className="w-4 h-4" />
+                                                </Link>
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => handleDeleteCourse(course.id)}
+                                                className="text-destructive hover:text-destructive"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </CardContent>
                 </Card>
-              ))}
-            </div>
-          )}
+            </main>
         </div>
-      </main>
-    </div>
-  );
+    );
 }

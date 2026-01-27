@@ -1,275 +1,265 @@
-import { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import api, { Course, Module, Lesson, getYoutubeVideoId } from '@/services/api';
+import { useState, useEffect } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { Navbar } from '@/components/layout/Navbar';
+import api, { getYoutubeVideoId } from '@/services/api';
+import type { Course, Lesson } from '@/services/api';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ArrowLeft, CheckCircle, Circle, Loader2, BookOpen, MessageSquare, Terminal, FileQuestion, ChevronDown, ChevronRight } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AICoach, AITutor } from '@/components/sections/AICoach';
-import { CodeEditor } from '@/components/CodeEditor';
-import { Quiz } from '@/components/Quiz';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import {
+    ArrowLeft, Play, Clock, Users, BookOpen,
+    ChevronDown, ChevronRight, BarChart3
+} from 'lucide-react';
 
-interface LessonProgress {
-  lessonId: string;
-  completed: boolean;
-}
+const levelLabels: Record<string, string> = {
+    beginner: 'Beginner',
+    intermediate: 'Intermediate',
+    advanced: 'Advanced',
+};
 
 export default function CourseViewer() {
-  const { courseId } = useParams();
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const { toast } = useToast();
+    const { courseId } = useParams<{ courseId: string }>();
+    const navigate = useNavigate();
+    const [course, setCourse] = useState<Course | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
+    const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
 
-  const [course, setCourse] = useState<Course | null>(null);
-  const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
-  const [userProgress, setUserProgress] = useState<LessonProgress[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [markingComplete, setMarkingComplete] = useState(false);
-  const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
+    useEffect(() => {
+        if (!courseId) return;
 
-  // Flatten all lessons from modules for easy navigation
-  const allLessons = useMemo(() => {
-    if (!course?.modules) return [];
-    return course.modules
-      .sort((a, b) => a.order - b.order)
-      .flatMap(module =>
-        (module.lessons || []).sort((a, b) => a.order - b.order)
-      );
-  }, [course]);
+        const fetchCourse = async () => {
+            try {
+                const data = await api.getCourse(courseId);
+                setCourse(data);
 
-  useEffect(() => {
-    if (!user) {
-      navigate('/auth');
-      return;
-    }
+                // Auto-expand first module and select first lesson
+                if (data.modules && data.modules.length > 0) {
+                    setExpandedModules(new Set([data.modules[0].id]));
+                    if (data.modules[0].lessons && data.modules[0].lessons.length > 0) {
+                        setActiveLesson(data.modules[0].lessons[0]);
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to fetch course', err);
+                setError(err instanceof Error ? err.message : 'Failed to load course');
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchCourse();
+    }, [courseId]);
 
-    if (courseId) {
-      const fetchCourse = async () => {
-        try {
-          const courseData = await api.getCourse(courseId);
-          setCourse(courseData);
+    const toggleModule = (moduleId: string) => {
+        setExpandedModules(prev => {
+            const next = new Set(prev);
+            if (next.has(moduleId)) {
+                next.delete(moduleId);
+            } else {
+                next.add(moduleId);
+            }
+            return next;
+        });
+    };
 
-          // Expand all modules by default
-          const moduleIds = new Set(courseData.modules?.map(m => m.id) || []);
-          setExpandedModules(moduleIds);
+    const getTotalLessons = (): number => {
+        if (!course?.modules) return 0;
+        return course.modules.reduce((total, module) => total + (module.lessons?.length || 0), 0);
+    };
 
-          // Get lessons from modules
-          const lessons = courseData.modules
-            ?.sort((a, b) => a.order - b.order)
-            .flatMap(m => (m.lessons || []).sort((a, b) => a.order - b.order)) || [];
-
-          // Set first lesson
-          if (lessons.length > 0) {
-            setCurrentLesson(lessons[0]);
-          }
-        } catch (error) {
-          console.error('Failed to fetch course:', error);
-          toast({ title: 'Error', description: 'Failed to load course', variant: 'destructive' });
-        } finally {
-          setLoading(false);
-        }
-      };
-
-      fetchCourse();
-    }
-  }, [courseId, user, navigate, toast]);
-
-  const isLessonComplete = (lessonId: string) => {
-    return userProgress.some(p => p.lessonId === lessonId && p.completed);
-  };
-
-  const getCourseProgressPercent = () => {
-    if (allLessons.length === 0) return 0;
-    const completed = allLessons.filter(l => isLessonComplete(l.id)).length;
-    return Math.round((completed / allLessons.length) * 100);
-  };
-
-  const handleMarkComplete = async () => {
-    if (!currentLesson) return;
-
-    setMarkingComplete(true);
-    try {
-      // Mark lesson as complete in local state
-      // Note: Backend progress tracking API should be integrated here
-      setUserProgress(prev => [...prev, { lessonId: currentLesson.id, completed: true }]);
-      toast({ title: 'Lesson completed!' });
-
-      // Auto-advance to next lesson
-      const currentIndex = allLessons.findIndex(l => l.id === currentLesson.id);
-      if (currentIndex < allLessons.length - 1) {
-        setCurrentLesson(allLessons[currentIndex + 1]);
-      }
-    } catch (error) {
-      toast({ title: 'Error', description: 'Failed to mark lesson complete', variant: 'destructive' });
-    } finally {
-      setMarkingComplete(false);
-    }
-  };
-
-  const toggleModule = (moduleId: string) => {
-    setExpandedModules(prev => {
-      const next = new Set(prev);
-      if (next.has(moduleId)) {
-        next.delete(moduleId);
-      } else {
-        next.add(moduleId);
-      }
-      return next;
-    });
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (!course || !user) return null;
-
-  const videoId = currentLesson?.youtube_url ? getYoutubeVideoId(currentLesson.youtube_url) : null;
-  const progress = getCourseProgressPercent();
-
-  return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <header className="border-b border-border bg-card px-4 py-3 flex items-center gap-4">
-        <Link to="/dashboard" className="text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="w-5 h-5" />
-        </Link>
-        <div className="flex-1">
-          <h1 className="font-semibold text-foreground truncate">{course.title}</h1>
-          <div className="flex items-center gap-2 mt-1">
-            <Progress value={progress} className="h-2 w-32" />
-            <span className="text-xs text-muted-foreground">{progress}%</span>
-          </div>
-        </div>
-      </header>
-
-      <div className="flex-1 flex flex-col lg:flex-row">
-        {/* Video Player */}
-        <div className="flex-1 bg-black flex flex-col">
-          {videoId ? (
-            <div className="aspect-video w-full">
-              <iframe
-                src={`https://www.youtube.com/embed/${videoId}?rel=0`}
-                className="w-full h-full"
-                allowFullScreen
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              />
-            </div>
-          ) : (
-            <div className="aspect-video flex items-center justify-center text-muted-foreground">
-              {currentLesson ? 'No video available for this lesson' : 'Select a lesson to start'}
-            </div>
-          )}
-
-          {currentLesson && (
-            <div className="p-4 bg-card border-t border-border mt-4">
-              <Tabs defaultValue="content" className="w-full">
-                <TabsList className="mb-4">
-                  <TabsTrigger value="content" className="flex gap-2"><BookOpen className="w-4 h-4" /> Lesson</TabsTrigger>
-                  <TabsTrigger value="code" className="flex gap-2"><Terminal className="w-4 h-4" /> Code</TabsTrigger>
-                  <TabsTrigger value="ai" className="flex gap-2"><MessageSquare className="w-4 h-4" /> AI Tutor</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="content" className="space-y-4">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h2 className="text-lg font-semibold text-foreground mb-1">{currentLesson.title}</h2>
-                      <p className="text-muted-foreground text-sm">{currentLesson.description}</p>
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-background">
+                <Navbar />
+                <div className="container mx-auto px-4 py-8 pt-24">
+                    <Skeleton className="h-8 w-48 mb-4" />
+                    <div className="grid lg:grid-cols-3 gap-8">
+                        <div className="lg:col-span-2">
+                            <Skeleton className="aspect-video w-full rounded-xl" />
+                        </div>
+                        <div>
+                            <Skeleton className="h-96 w-full rounded-xl" />
+                        </div>
                     </div>
-                    <Button
-                      onClick={handleMarkComplete}
-                      disabled={isLessonComplete(currentLesson.id) || markingComplete}
-                      size="sm"
-                    >
-                      {markingComplete ? (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      ) : isLessonComplete(currentLesson.id) ? (
-                        <>
-                          <CheckCircle className="w-4 h-4 mr-2" />
-                          Completed
-                        </>
-                      ) : (
-                        'Mark Complete'
-                      )}
+                </div>
+            </div>
+        );
+    }
+
+    if (error || !course) {
+        return (
+            <div className="min-h-screen bg-background">
+                <Navbar />
+                <div className="container mx-auto px-4 py-8 pt-24 text-center">
+                    <h1 className="text-2xl font-bold mb-4">Course Not Found</h1>
+                    <p className="text-muted-foreground mb-4">{error || 'This course does not exist.'}</p>
+                    <Button onClick={() => navigate('/courses')}>
+                        <ArrowLeft className="w-4 h-4 mr-2" />
+                        Back to Courses
                     </Button>
-                  </div>
-
-                  {currentLesson.transcript && (
-                    <div className="prose dark:prose-invert max-w-none text-sm p-4 bg-muted/50 rounded-lg">
-                      {currentLesson.transcript}
-                    </div>
-                  )}
-                </TabsContent>
-
-                <TabsContent value="code">
-                  <CodeEditor lessonId={currentLesson.id} />
-                </TabsContent>
-
-                <TabsContent value="ai">
-                  <AITutor lessonId={currentLesson.id} />
-                </TabsContent>
-              </Tabs>
+                </div>
             </div>
-          )}
-        </div>
+        );
+    }
 
-        {/* Sidebar with Modules */}
-        <ScrollArea className="w-full lg:w-80 border-l border-border bg-card">
-          <div className="p-4">
-            <h3 className="font-semibold text-foreground mb-4">Course Content</h3>
-            <div className="space-y-2">
-              {course.modules?.sort((a, b) => a.order - b.order).map((module) => (
-                <Collapsible
-                  key={module.id}
-                  open={expandedModules.has(module.id)}
-                  onOpenChange={() => toggleModule(module.id)}
+    const videoId = activeLesson?.youtube_video_id ||
+        (activeLesson?.youtube_url ? getYoutubeVideoId(activeLesson.youtube_url) : null);
+
+    return (
+        <div className="min-h-screen bg-background">
+            <Navbar />
+
+            <main className="container mx-auto px-4 py-8 pt-24">
+                {/* Back button */}
+                <Link
+                    to="/courses"
+                    className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition-colors"
                 >
-                  <CollapsibleTrigger className="w-full text-left p-2 rounded-md text-sm font-medium flex items-center gap-2 hover:bg-muted transition-colors">
-                    {expandedModules.has(module.id) ? (
-                      <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                    ) : (
-                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                    )}
-                    <span className="flex-1 truncate">{module.order}. {module.title}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {module.lessons?.length || 0} lessons
-                    </span>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="pl-6 space-y-1 mt-1">
-                    {module.lessons?.sort((a, b) => a.order - b.order).map((lesson) => {
-                      const completed = isLessonComplete(lesson.id);
-                      const isCurrent = currentLesson?.id === lesson.id;
-                      return (
-                        <button
-                          key={lesson.id}
-                          onClick={() => setCurrentLesson(lesson)}
-                          className={`w-full text-left p-2 rounded-md text-sm flex items-center gap-2 transition-colors ${isCurrent ? 'bg-primary/10 text-primary' : 'hover:bg-muted'
-                            }`}
-                        >
-                          {completed ? (
-                            <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />
-                          ) : (
-                            <Circle className="w-4 h-4 text-muted-foreground shrink-0" />
-                          )}
-                          <span className="truncate">{lesson.title}</span>
-                          <span className="text-xs text-muted-foreground ml-auto">{lesson.duration_minutes}m</span>
-                        </button>
-                      );
-                    })}
-                  </CollapsibleContent>
-                </Collapsible>
-              ))}
-            </div>
-          </div>
-        </ScrollArea>
-      </div>
-    </div>
-  );
+                    <ArrowLeft className="w-4 h-4" />
+                    Back to courses
+                </Link>
+
+                {/* Course header */}
+                <div className="mb-6">
+                    <div className="flex items-center gap-3 mb-2">
+                        <Badge variant="outline">
+                            <BarChart3 className="w-3 h-3 mr-1" />
+                            {levelLabels[course.skill_level] || course.skill_level}
+                        </Badge>
+                        {course.is_free && <Badge>Free</Badge>}
+                        <Badge variant="secondary">{course.category}</Badge>
+                    </div>
+                    <h1 className="text-3xl font-bold mb-2">{course.title}</h1>
+                    <p className="text-muted-foreground">{course.description}</p>
+                    <div className="flex items-center gap-4 mt-4 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                            <BookOpen className="w-4 h-4" />
+                            {course.modules?.length || 0} modules
+                        </span>
+                        <span className="flex items-center gap-1">
+                            <Play className="w-4 h-4" />
+                            {getTotalLessons()} lessons
+                        </span>
+                        <span className="flex items-center gap-1">
+                            <Users className="w-4 h-4" />
+                            {course.total_enrollments || 0} enrolled
+                        </span>
+                    </div>
+                </div>
+
+                <div className="grid lg:grid-cols-3 gap-8">
+                    {/* Video Player */}
+                    <div className="lg:col-span-2 space-y-4">
+                        <div className="aspect-video bg-muted rounded-xl overflow-hidden">
+                            {videoId ? (
+                                <iframe
+                                    className="w-full h-full"
+                                    src={`https://www.youtube.com/embed/${videoId}`}
+                                    title={activeLesson?.title}
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                    allowFullScreen
+                                />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                    <div className="text-center">
+                                        <Play className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                                        <p className="text-muted-foreground">
+                                            {activeLesson ? 'No video available for this lesson' : 'Select a lesson to start'}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Active lesson info */}
+                        {activeLesson && (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>{activeLesson.title}</CardTitle>
+                                    <CardDescription>{activeLesson.description}</CardDescription>
+                                </CardHeader>
+                                {activeLesson.duration_minutes && (
+                                    <CardContent>
+                                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                            <Clock className="w-4 h-4" />
+                                            {activeLesson.duration_minutes} minutes
+                                        </div>
+                                    </CardContent>
+                                )}
+                            </Card>
+                        )}
+                    </div>
+
+                    {/* Course content sidebar */}
+                    <div>
+                        <Card className="sticky top-24">
+                            <CardHeader className="pb-3">
+                                <CardTitle className="text-lg">Course Content</CardTitle>
+                                <CardDescription>
+                                    {course.modules?.length || 0} modules • {getTotalLessons()} lessons
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="p-0">
+                                <ScrollArea className="h-[500px]">
+                                    {course.modules?.map((module) => (
+                                        <div key={module.id} className="border-t">
+                                            {/* Module header */}
+                                            <button
+                                                onClick={() => toggleModule(module.id)}
+                                                className="w-full px-4 py-3 flex items-center justify-between hover:bg-muted/50 transition-colors text-left"
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    {expandedModules.has(module.id) ? (
+                                                        <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                                                    ) : (
+                                                        <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                                                    )}
+                                                    <span className="font-medium text-sm">{module.title}</span>
+                                                </div>
+                                                <span className="text-xs text-muted-foreground">
+                                                    {module.lessons?.length || 0} lessons
+                                                </span>
+                                            </button>
+
+                                            {/* Lessons */}
+                                            {expandedModules.has(module.id) && (
+                                                <div className="bg-muted/30">
+                                                    {module.lessons?.map((lesson) => (
+                                                        <button
+                                                            key={lesson.id}
+                                                            onClick={() => setActiveLesson(lesson)}
+                                                            className={`w-full px-4 py-2 pl-10 flex items-center gap-3 hover:bg-muted/50 transition-colors text-left ${activeLesson?.id === lesson.id ? 'bg-primary/10 border-l-2 border-primary' : ''
+                                                                }`}
+                                                        >
+                                                            <Play className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                                                            <span className="text-sm line-clamp-1 flex-1">{lesson.title}</span>
+                                                            {lesson.duration_minutes && (
+                                                                <span className="text-xs text-muted-foreground">
+                                                                    {lesson.duration_minutes}m
+                                                                </span>
+                                                            )}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+
+                                    {(!course.modules || course.modules.length === 0) && (
+                                        <div className="p-6 text-center text-muted-foreground">
+                                            <BookOpen className="w-8 h-8 mx-auto mb-2" />
+                                            <p className="text-sm">No modules available yet</p>
+                                        </div>
+                                    )}
+                                </ScrollArea>
+                            </CardContent>
+                        </Card>
+                    </div>
+                </div>
+            </main>
+        </div>
+    );
 }

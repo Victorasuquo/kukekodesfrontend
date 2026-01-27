@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
-import api, { Course } from '@/services/api';
+import api from '@/services/api';
+import type { Course } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -24,12 +25,14 @@ export default function CoursesPage() {
 
     useEffect(() => {
         const fetchCourses = async () => {
+            setLoading(true);
             try {
                 const params = filter === 'all' ? {} : { skill_level: filter };
                 const response = await api.getCourses(params);
-                setCourses(response.data || []);
+                setCourses(response?.data || []);
             } catch (error) {
                 console.error('Failed to fetch courses', error);
+                setCourses([]);
             } finally {
                 setLoading(false);
             }

@@ -106,9 +106,11 @@ export default function Auth() {
 
         <Card className="border-border/50 shadow-xl shadow-primary/5">
           <CardHeader className="text-center pb-2">
-            <div className="w-12 h-12 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center mx-auto mb-4">
-              <span className="text-2xl font-bold text-white">K</span>
-            </div>
+            <img
+              src="/images/about/logo.png"
+              alt="KukeKodes"
+              className="w-20 h-20 object-contain mx-auto mb-4"
+            />
             <CardTitle className="text-2xl font-bold">Welcome to KukeKodes</CardTitle>
             <CardDescription>Start your free coding journey today</CardDescription>
           </CardHeader>

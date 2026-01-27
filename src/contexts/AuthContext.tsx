@@ -1,6 +1,21 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import api, { getAccessToken, getStoredUser, clearTokens, setStoredUser } from '@/services/api';
-import { User, AppUser } from '@/types/lms';
+import api, { getAccessToken, getStoredUser, clearTokens, setStoredUser, User } from '@/services/api';
+
+// =============================================================================
+// Types
+// =============================================================================
+
+export interface AppUser {
+  id: string;
+  username: string;
+  email: string;
+  name: string;
+  firstName: string;
+  lastName: string;
+  role: 'admin' | 'instructor' | 'student';
+  profilePicture?: string;
+  country?: string;
+}
 
 interface AuthContextType {
   user: AppUser | null;
@@ -19,7 +34,15 @@ interface AuthContextType {
   refreshUser: () => void;
 }
 
+// =============================================================================
+// Context
+// =============================================================================
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// =============================================================================
+// Helper Functions
+// =============================================================================
 
 function mapUserToAppUser(user: User): AppUser {
   return {
@@ -27,11 +50,17 @@ function mapUserToAppUser(user: User): AppUser {
     username: user.username || user.email.split('@')[0],
     email: user.email,
     name: `${user.first_name} ${user.last_name}`.trim(),
+    firstName: user.first_name,
+    lastName: user.last_name,
     role: user.role,
-    profilePicture: user.profile_picture_url,
-    country: user.country,
+    profilePicture: user.profile_picture_url || undefined,
+    country: user.country || undefined,
   };
 }
+
+// =============================================================================
+// Provider Component
+// =============================================================================
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
@@ -64,10 +93,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: true };
     } catch (error) {
       console.error('Login failed', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Login failed'
-      };
+      const message = error instanceof Error ? error.message : 'Login failed. Please try again.';
+      return { success: false, error: message };
     }
   };
 
@@ -84,10 +111,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: true };
     } catch (error) {
       console.error('Signup failed', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Registration failed'
-      };
+      const message = error instanceof Error ? error.message : 'Registration failed. Please try again.';
+      return { success: false, error: message };
     }
   };
 
@@ -102,21 +127,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const value: AuthContextType = {
+    user,
+    isLoading,
+    login,
+    signup,
+    logout,
+    isAdmin: user?.role === 'admin',
+    isInstructor: user?.role === 'instructor' || user?.role === 'admin',
+    refreshUser,
+  };
+
   return (
-    <AuthContext.Provider value={{
-      user,
-      isLoading,
-      login,
-      signup,
-      logout,
-      isAdmin: user?.role === 'admin',
-      isInstructor: user?.role === 'instructor' || user?.role === 'admin',
-      refreshUser,
-    }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
 }
+
+// =============================================================================
+// Hook
+// =============================================================================
 
 export function useAuth() {
   const context = useContext(AuthContext);
