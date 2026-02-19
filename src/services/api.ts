@@ -196,7 +196,7 @@ class APIService {
       config.body = JSON.stringify(options.body);
     }
 
-    logger.info(`API Request: ${options.method || 'GET'} ${endpoint}`);
+    logger.info(`API Request: ${options.method || 'GET'} ${endpoint}`, config.body);
 
     try {
       const response = await fetch(url, config);
