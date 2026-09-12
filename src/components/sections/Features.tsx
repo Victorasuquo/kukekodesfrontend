@@ -17,35 +17,35 @@ const features = [
     title: "AI Coach 24/7",
     description: "Your personal AI tutor that explains concepts, debugs your code, and guides you through challenges at any hour.",
     color: "primary",
-    stat: "1M+ questions answered"
+    stat: "Server-side Gemini"
   },
   {
     icon: Code,
     title: "Hands-on Coding",
     description: "Write and run code directly in your browser with our built-in sandbox. No setup required, just start coding.",
     color: "secondary",
-    stat: "25K+ projects built"
+    stat: "Browser sandbox"
   },
   {
     icon: Users,
     title: "Global Community",
-    description: "Join thousands of learners worldwide. Share projects, ask questions, and grow together as developers.",
+    description: "Join moderated course forums. Share projects, ask questions, and grow together as developers.",
     color: "accent",
-    stat: "120+ countries"
+    stat: "Course forums"
   },
   {
     icon: Trophy,
     title: "Gamified Learning",
     description: "Earn XP, unlock badges, maintain streaks, and climb leaderboards as you master new skills.",
     color: "primary",
-    stat: "500K+ badges earned"
+    stat: "Progress tracking"
   },
   {
     icon: TrendingUp,
     title: "Career Paths",
     description: "Follow structured learning paths from beginner to job-ready developer, AI engineer, or data scientist.",
     color: "secondary",
-    stat: "5 career tracks"
+    stat: "Structured paths"
   },
   {
     icon: Globe,

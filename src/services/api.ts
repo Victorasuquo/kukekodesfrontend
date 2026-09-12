@@ -1,5 +1,4 @@
 // FastAPI Backend API Service
-// Robust implementation with direct URL, error handling, and proper typing
 
 import { logger } from '@/lib/logger';
 
@@ -7,10 +6,8 @@ import { logger } from '@/lib/logger';
 // CONFIGURATION
 // =============================================================================
 
-// Use direct backend URL to bypass proxy DNS issues
-const API_BASE_URL = import.meta.env.PROD
-  ? '' // Production uses Vercel rewrites
-  : 'https://kukekodesbackend-714266210254.europe-west1.run.app';
+const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API_BASE_URL = configuredApiBaseUrl.replace(/\/$/, '');
 
 const API_PREFIX = '/api/v1';
 
@@ -25,6 +22,7 @@ const USER_KEY = 'kukekodes_user';
 
 export interface User {
   id: string;
+  learner_id?: string | null;
   email: string;
   first_name: string;
   last_name: string;
@@ -108,8 +106,62 @@ export interface PaginatedResponse<T> {
 }
 
 export interface APIError {
-  detail: string;
-  error_code?: string;
+  code: string;
+  message: string;
+  fields?: Record<string, string[]>;
+  request_id?: string;
+}
+
+export type APICourse = Course;
+
+export interface APIUserProgress {
+  id: string;
+  user_id: string;
+  course_id: string;
+  lesson_id?: string | null;
+  progress_percentage: number;
+  is_completed: boolean;
+  completed_at?: string | null;
+}
+
+export interface APIQuizAnswer {
+  id: number;
+  answer_text: string;
+  is_correct?: boolean;
+}
+
+export interface APIQuizQuestion {
+  id: number;
+  question_text: string;
+  answers: APIQuizAnswer[];
+}
+
+export interface APIQuiz {
+  id: number;
+  title: string;
+  passing_score: number;
+  questions: APIQuizQuestion[];
+}
+
+export interface APICertificate {
+  id: string;
+  certificate_id: string;
+  course: string;
+  issued_date: string;
+  download_url?: string | null;
+}
+
+export interface LiveSession {
+  id: number;
+  title: string;
+  description?: string | null;
+  course?: string | number | null;
+  scheduled_start: string;
+  scheduled_end: string;
+  max_participants?: number | null;
+  is_active: boolean;
+  youtube_live_url?: string | null;
+  instructor?: Pick<User, 'first_name' | 'last_name'> | null;
 }
 
 // =============================================================================
@@ -189,6 +241,7 @@ class APIService {
       ...options,
       headers,
       mode: 'cors',
+      credentials: 'include',
     };
 
     // Handle body serialization
@@ -248,10 +301,14 @@ class APIService {
     try {
       const data = await response.json();
 
+      if (typeof data.code === 'string' && typeof data.message === 'string') {
+        return data.message;
+      }
+
       // Handle FastAPI validation errors (array of objects)
       if (Array.isArray(data.detail)) {
         return data.detail
-          .map((err: any) => `${err.loc?.[err.loc.length - 1] || 'Field'}: ${err.msg}`)
+          .map((err: { loc?: Array<string | number>; msg?: string }) => `${err.loc?.[err.loc.length - 1] || 'Field'}: ${err.msg || 'Invalid value'}`)
           .join('\n');
       }
 
@@ -297,6 +354,19 @@ class APIService {
     );
 
     // Store tokens and user
+    setTokens(response.token.access_token, response.token.refresh_token);
+    setStoredUser(response.user);
+
+    return response;
+  }
+
+  async adminLogin(email: string, password: string): Promise<AuthResponse> {
+    const response = await this.request<AuthResponse>(
+      '/admin/auth/login',
+      { method: 'POST', body: { email, password } as unknown as BodyInit },
+      false
+    );
+
     setTokens(response.token.access_token, response.token.refresh_token);
     setStoredUser(response.user);
 
@@ -349,13 +419,7 @@ class APIService {
 
     const query = queryParams.toString() ? `?${queryParams.toString()}` : '';
 
-    try {
-      return await this.request<PaginatedResponse<Course>>(`/courses${query}`, {}, false);
-    } catch (error) {
-      // Return empty response on error so UI doesn't break
-      logger.error('Failed to fetch courses', error);
-      return { data: [], meta: { total: 0, page: 1, page_size: 10, total_pages: 0 } };
-    }
+    return this.request<PaginatedResponse<Course>>(`/courses${query}`, {}, false);
   }
 
   async getCourse(id: string): Promise<Course> {
@@ -453,11 +517,65 @@ class APIService {
   }
 
   // ---------------------------------------------------------------------------
+  // Launch-plan endpoints. These call real backend contracts once mounted.
+  // UI components must render failure/unavailable states instead of fake data.
+  // ---------------------------------------------------------------------------
+  async askAI(message: string, lessonId: number): Promise<{ answer: string }> {
+    return this.request<{ answer: string }>('/ai/coach', {
+      method: 'POST',
+      body: { message, lesson_id: lessonId } as unknown as BodyInit,
+    });
+  }
+
+  async getQuiz(quizId: number): Promise<APIQuiz> {
+    return this.request<APIQuiz>(`/quizzes/${quizId}`);
+  }
+
+  async submitQuizAttempt(
+    quizId: number,
+    answers: Record<number, number>
+  ): Promise<APIUserProgress> {
+    return this.request<APIUserProgress>(`/quizzes/${quizId}/attempts`, {
+      method: 'POST',
+      body: { answers } as unknown as BodyInit,
+    });
+  }
+
+  async runCode(code: string, lessonId: number): Promise<{ submission_id: number }> {
+    return this.request<{ submission_id: number }>('/code/submissions', {
+      method: 'POST',
+      body: { source: code, lesson_id: lessonId, runtime: 'python' } as unknown as BodyInit,
+    });
+  }
+
+  async getSubmissionStatus(
+    submissionId: number
+  ): Promise<{ status: 'queued' | 'running' | 'completed' | 'failed'; output?: string; error?: string }> {
+    return this.request(`/code/submissions/${submissionId}`);
+  }
+
+  async getCertificates(): Promise<APICertificate[]> {
+    const response = await this.request<APICertificate[] | PaginatedResponse<APICertificate>>('/certificates');
+    return Array.isArray(response) ? response : response.data;
+  }
+
+  async getLiveSessions(): Promise<LiveSession[]> {
+    const response = await this.request<LiveSession[] | PaginatedResponse<LiveSession>>('/live-sessions');
+    return Array.isArray(response) ? response : response.data;
+  }
+
+  async joinSession(sessionId: number): Promise<{ join_url?: string }> {
+    return this.request<{ join_url?: string }>(`/live-sessions/${sessionId}/join`, {
+      method: 'POST',
+    });
+  }
+
+  // ---------------------------------------------------------------------------
   // Health Check
   // ---------------------------------------------------------------------------
   async healthCheck(): Promise<{ status: string }> {
     try {
-      const response = await fetch(`${API_BASE_URL}/health`);
+      const response = await fetch(`${API_BASE_URL}/readyz`, { credentials: 'include' });
       return response.json();
     } catch {
       return { status: 'unreachable' };
@@ -475,7 +593,7 @@ export default api;
 // Helper to extract YouTube video ID
 export const getYoutubeVideoId = (url: string): string | null => {
   if (!url) return null;
-  const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+  const regex = new RegExp('(?:youtube\\.com/(?:[^/]+/.+/|(?:v|e(?:mbed)?)/|.*[?&]v=)|youtu\\.be/)([^"&?/\\s]{11})');
   const match = url.match(regex);
   return match ? match[1] : null;
 };

@@ -20,14 +20,14 @@ const levelLabels: Record<string, string> = {
 };
 
 export default function AdminDashboard() {
-    const { user, isAdmin, isInstructor } = useAuth();
+    const { user, isAdmin } = useAuth();
     const navigate = useNavigate();
     const [courses, setCourses] = useState<Course[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
-        if (!user || (!isAdmin && !isInstructor)) {
+        if (!user || !isAdmin) {
             navigate('/dashboard');
             return;
         }
@@ -44,7 +44,7 @@ export default function AdminDashboard() {
             }
         };
         fetchCourses();
-    }, [user, isAdmin, isInstructor, navigate]);
+    }, [user, isAdmin, navigate]);
 
     const filteredCourses = courses.filter(course =>
         course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -62,7 +62,7 @@ export default function AdminDashboard() {
         }
     };
 
-    if (!user || (!isAdmin && !isInstructor)) {
+    if (!user || !isAdmin) {
         return null;
     }
 

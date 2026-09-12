@@ -16,6 +16,8 @@ import Live from "./pages/Live";
 import ForumPage from "./pages/ForumPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import CourseEditor from "./pages/admin/CourseEditor";
+import AdminLogin from "./pages/admin/AdminLogin";
+import { RequirePlatformAdmin, RequireSession } from "@/components/auth/RouteGuards";
 import "./App.css";
 
 const queryClient = new QueryClient({
@@ -39,14 +41,20 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
-              <Route path="/dashboard" element={<Dashboard />} />
+              <Route element={<RequireSession />}>
+                <Route path="/dashboard" element={<Dashboard />} />
+              </Route>
               <Route path="/courses" element={<CoursesPage />} />
               <Route path="/courses/:courseId" element={<CourseViewer />} />
               <Route path="/about" element={<AboutPage />} />
               <Route path="/live" element={<Live />} />
               <Route path="/community" element={<ForumPage />} />
-              <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="/admin/courses/:courseId" element={<CourseEditor />} />
+              <Route path="/admin/login" element={<AdminLogin />} />
+              <Route element={<RequirePlatformAdmin />}>
+                <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="/admin/courses/new" element={<CourseEditor />} />
+                <Route path="/admin/courses/:courseId" element={<CourseEditor />} />
+              </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

@@ -1,14 +1,6 @@
 {
     "rewrites": [
         {
-            "source": "/api/v1/:path*",
-            "destination": "https://kukekodesbackend-714266210254.europe-west1.run.app/api/v1/:path*"
-        },
-        {
-            "source": "/health",
-            "destination": "https://kukekodesbackend-714266210254.europe-west1.run.app/health"
-        },
-        {
             "source": "/(.*)",
             "destination": "/index.html"
         }

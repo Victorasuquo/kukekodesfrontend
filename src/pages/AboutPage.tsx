@@ -27,10 +27,10 @@ import { useRef } from "react";
 
 // Stats data
 const impactStats = [
-    { value: "50K+", label: "Active Learners", icon: Users },
-    { value: "120+", label: "Countries", icon: Globe },
-    { value: "85%", label: "Completion Rate", icon: TrendingUp },
-    { value: "4.9★", label: "Rating", icon: Sparkles },
+    { value: "Text-first", label: "Learning Access", icon: Users },
+    { value: "Low-data", label: "Course Delivery", icon: Globe },
+    { value: "Tracked", label: "Progress", icon: TrendingUp },
+    { value: "Moderated", label: "Community", icon: Sparkles },
 ];
 
 // Problem points
@@ -486,8 +486,8 @@ export default function AboutPage() {
                                         viewport={{ once: true }}
                                         className="absolute -bottom-6 -right-6 bg-card/90 backdrop-blur-xl border border-white/20 rounded-2xl p-6 shadow-xl"
                                     >
-                                        <div className="text-3xl font-bold text-primary">120+</div>
-                                        <div className="text-sm text-muted-foreground">Countries Reached</div>
+                                        <div className="text-3xl font-bold text-primary">Low-data</div>
+                                        <div className="text-sm text-muted-foreground">Learning Ready</div>
                                     </motion.div>
                                 </div>
                             </ScrollReveal>
@@ -598,7 +598,7 @@ export default function AboutPage() {
                                         className="absolute -top-4 -left-4 bg-secondary text-secondary-foreground rounded-xl px-4 py-2 shadow-lg"
                                     >
                                         <span className="text-sm font-medium flex items-center gap-2">
-                                            <GraduationCap className="w-4 h-4" /> 50K+ Graduated
+                                            <GraduationCap className="w-4 h-4" /> Certificate Ready
                                         </span>
                                     </motion.div>
 
@@ -723,7 +723,7 @@ export default function AboutPage() {
                                         className="absolute -top-4 -left-4 bg-gradient-to-br from-blue-500 to-cyan-500 text-white rounded-2xl px-6 py-3 shadow-xl"
                                     >
                                         <span className="font-bold text-lg flex items-center gap-2">
-                                            <Globe className="w-5 h-5" /> 120+ Countries
+                                            <Globe className="w-5 h-5" /> Global Access
                                         </span>
                                     </motion.div>
                                 </div>

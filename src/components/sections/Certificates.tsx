@@ -8,7 +8,7 @@ import { format } from 'date-fns';
 
 export function Certificates() {
     const [certificates, setCertificates] = useState<APICertificate[]>([]);
-    const [courses, setCourses] = useState<Record<number, APICourse>>({});
+    const [courses, setCourses] = useState<Record<string, APICourse>>({});
     const [loading, setLoading] = useState(true);
     const { toast } = useToast();
 
@@ -21,8 +21,8 @@ export function Certificates() {
                 ]);
                 setCertificates(certsData);
 
-                const courseMap: Record<number, APICourse> = {};
-                coursesData.forEach(c => courseMap[c.id] = c);
+                const courseMap: Record<string, APICourse> = {};
+                coursesData.data.forEach(c => courseMap[c.id] = c);
                 setCourses(courseMap);
 
             } catch (error) {

@@ -21,6 +21,7 @@ interface AuthContextType {
   user: AppUser | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  adminLogin: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signup: (data: {
     email: string;
     password: string;
@@ -98,6 +99,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const adminLogin = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const response = await api.adminLogin(email, password);
+      setUser(mapUserToAppUser(response.user));
+      return { success: true };
+    } catch (error) {
+      console.error('Admin login failed', error);
+      const message = error instanceof Error ? error.message : 'Admin login failed. Please try again.';
+      return { success: false, error: message };
+    }
+  };
+
   const signup = async (data: {
     email: string;
     password: string;
@@ -131,6 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     isLoading,
     login,
+    adminLogin,
     signup,
     logout,
     isAdmin: user?.role === 'admin',

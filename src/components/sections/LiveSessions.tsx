@@ -142,7 +142,7 @@ function SessionCard({
                 </div>
                 <div className="flex items-center text-sm text-muted-foreground">
                     <Users className="w-4 h-4 mr-2" />
-                    Max Participants: {session.max_participants}
+                    Max Participants: {session.max_participants ?? 'Not capped'}
                 </div>
                 {session.instructor && (
                     <div className="text-sm font-medium pt-2">

@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Github, Twitter, Youtube, Linkedin, Instagram, Mail, MapPin, Phone, ExternalLink, Heart, Globe } from "lucide-react";
+import { Github, Twitter, Youtube, Linkedin, Instagram, Mail, ExternalLink, Heart, Globe } from "lucide-react";
 import logo from "@/assets/kukekodes-logo.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,24 +22,9 @@ const footerLinks = {
   Company: [
     { label: "About Us", href: "/about", internal: true },
     { label: "Our Mission", href: "/about#mission", internal: true },
-    { label: "Careers", href: "/careers", internal: true },
-    { label: "Press & Media", href: "/press", internal: true },
-    { label: "Blog", href: "/blog", internal: true },
-    { label: "Contact Us", href: "/contact", internal: true },
   ],
   Resources: [
-    { label: "Help Center", href: "/help", internal: true },
-    { label: "Documentation", href: "/docs", internal: true },
-    { label: "API Reference", href: "/api-docs", internal: true },
     { label: "Status Page", href: "https://status.kukekodes.com", internal: false },
-    { label: "Changelog", href: "/changelog", internal: true },
-  ],
-  Legal: [
-    { label: "Privacy Policy", href: "/privacy", internal: true },
-    { label: "Terms of Service", href: "/terms", internal: true },
-    { label: "Cookie Policy", href: "/cookies", internal: true },
-    { label: "Accessibility", href: "/accessibility", internal: true },
-    { label: "GDPR", href: "/gdpr", internal: true },
   ],
 };
 
@@ -49,13 +34,6 @@ const socialLinks = [
   { icon: Youtube, href: "https://youtube.com/@kukekodes", label: "YouTube" },
   { icon: Linkedin, href: "https://linkedin.com/company/kukekodes", label: "LinkedIn" },
   { icon: Instagram, href: "https://instagram.com/kukekodes", label: "Instagram" },
-];
-
-const stats = [
-  { value: "50K+", label: "Active Learners" },
-  { value: "120+", label: "Countries" },
-  { value: "500+", label: "Hours of Content" },
-  { value: "4.9", label: "Average Rating" },
 ];
 
 export function Footer() {
@@ -89,20 +67,6 @@ export function Footer() {
                 Subscribe
               </Button>
             </form>
-          </div>
-        </div>
-      </div>
-
-      {/* Stats Section */}
-      <div className="border-b border-border bg-muted/30">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            {stats.map((stat) => (
-              <div key={stat.label}>
-                <div className="text-2xl md:text-3xl font-bold text-primary">{stat.value}</div>
-                <div className="text-sm text-muted-foreground">{stat.label}</div>
-              </div>
-            ))}
           </div>
         </div>
       </div>
@@ -193,9 +157,7 @@ export function Footer() {
               <p>© {new Date().getFullYear()} Kukekodes. All rights reserved.</p>
               <div className="hidden sm:block w-px h-4 bg-border" />
               <div className="flex items-center gap-4">
-                <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
-                <Link to="/terms" className="hover:text-foreground transition-colors">Terms</Link>
-                <Link to="/cookies" className="hover:text-foreground transition-colors">Cookies</Link>
+                <a href="mailto:hello@kukekodes.com" className="hover:text-foreground transition-colors">Contact</a>
               </div>
             </div>
 
@@ -208,28 +170,6 @@ export function Footer() {
         </div>
       </div>
 
-      {/* Trust Badges / Awards */}
-      <div className="border-t border-border">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
-              🔒 SSL Secured
-            </span>
-            <span className="flex items-center gap-1">
-              ✓ GDPR Compliant
-            </span>
-            <span className="flex items-center gap-1">
-              🌍 120+ Countries
-            </span>
-            <span className="flex items-center gap-1">
-              ⭐ Top Rated Platform
-            </span>
-            <span className="flex items-center gap-1">
-              🎓 50,000+ Graduates
-            </span>
-          </div>
-        </div>
-      </div>
     </footer>
   );
 }

@@ -116,21 +116,21 @@ export function CTA() {
             </form>
           </div>
 
-          {/* Trust Badges */}
+          {/* Launch promises */}
           <div className="mt-12 flex flex-wrap items-center justify-center gap-8 text-muted-foreground">
             <div className="flex items-center gap-2">
-              <span className="text-3xl font-bold text-foreground">50K+</span>
-              <span className="text-sm">Learners</span>
+              <span className="text-3xl font-bold text-foreground">Free</span>
+              <span className="text-sm">Core courses</span>
             </div>
             <div className="w-px h-8 bg-border hidden sm:block" />
             <div className="flex items-center gap-2">
-              <span className="text-3xl font-bold text-foreground">4.9</span>
-              <span className="text-sm">★ Rating</span>
+              <span className="text-3xl font-bold text-foreground">Text</span>
+              <span className="text-sm">First lessons</span>
             </div>
             <div className="w-px h-8 bg-border hidden sm:block" />
             <div className="flex items-center gap-2">
-              <span className="text-3xl font-bold text-foreground">120+</span>
-              <span className="text-sm">Countries</span>
+              <span className="text-3xl font-bold text-foreground">Admin</span>
+              <span className="text-sm">Reviewed content</span>
             </div>
           </div>
         </ScrollReveal>

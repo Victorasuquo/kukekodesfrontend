@@ -6,7 +6,7 @@ import { Link } from "react-router-dom";
 const stats = [
   { value: "100%", label: "Free Forever", icon: Zap },
   { value: "24/7", label: "AI Coach", icon: MessageSquare },
-  { value: "50K+", label: "Learners", icon: Code2 },
+  { value: "Low-data", label: "Learning Path", icon: Code2 },
 ];
 
 const codeLines = [

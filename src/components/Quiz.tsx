@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import api, { APIQuiz, APIUserProgress } from '@/services/api';
+import api, { APIQuiz } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -49,7 +49,7 @@ export function Quiz({ quizId, onComplete }: QuizProps) {
 
         // Calculate local score for immediate feedback
         let correctCount = 0;
-        let totalQuestions = quiz.questions.length;
+        const totalQuestions = quiz.questions.length;
 
         quiz.questions.forEach(q => {
             const selectedAnswerId = answers[q.id];

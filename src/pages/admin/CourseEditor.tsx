@@ -16,10 +16,12 @@ import {
     ChevronDown, ChevronRight, Video, Loader2
 } from 'lucide-react';
 
+type SkillLevel = 'beginner' | 'intermediate' | 'advanced';
+
 export default function CourseEditor() {
     const { courseId } = useParams<{ courseId: string }>();
     const navigate = useNavigate();
-    const { user, isAdmin, isInstructor } = useAuth();
+    const { user, isAdmin } = useAuth();
     const { toast } = useToast();
     const isNew = courseId === 'new';
 
@@ -37,7 +39,7 @@ export default function CourseEditor() {
     const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
 
     useEffect(() => {
-        if (!user || (!isAdmin && !isInstructor)) {
+        if (!user || !isAdmin) {
             navigate('/dashboard');
             return;
         }
@@ -62,7 +64,7 @@ export default function CourseEditor() {
             };
             fetchCourse();
         }
-    }, [user, isAdmin, isInstructor, isNew, courseId, navigate, toast]);
+    }, [user, isAdmin, isNew, courseId, navigate, toast]);
 
     const handleSaveCourse = async () => {
         if (!title.trim()) {
@@ -117,32 +119,12 @@ export default function CourseEditor() {
         }
 
         try {
-            const token = localStorage.getItem('kukekodes_access_token');
-            const payload = {
+            const newModule = await api.createModule({
                 course_id: String(courseId),
                 title: `Module ${modules.length + 1}`,
                 description: 'Module description',
                 order: modules.length + 1,
-            };
-
-            console.log('Using RAW FETCH with payload:', payload);
-
-            const response = await fetch('https://kukekodesbackend-714266210254.europe-west1.run.app/api/v1/modules', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(payload)
             });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                console.error('Raw Fetch Error:', errorData);
-                throw new Error(JSON.stringify(errorData));
-            }
-
-            const newModule = await response.json();
             setModules(prev => [...prev, { ...newModule, lessons: [] }]);
             setExpandedModules(prev => new Set([...prev, newModule.id]));
             toast({ title: 'Success', description: 'Module created' });
@@ -178,7 +160,7 @@ export default function CourseEditor() {
         }
     };
 
-    if (!user || (!isAdmin && !isInstructor)) {
+    if (!user || !isAdmin) {
         return null;
     }
 
@@ -254,7 +236,7 @@ export default function CourseEditor() {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label>Skill Level</Label>
-                                        <Select value={skillLevel} onValueChange={(v: any) => setSkillLevel(v)}>
+                                        <Select value={skillLevel} onValueChange={(value) => setSkillLevel(value as SkillLevel)}>
                                             <SelectTrigger>
                                                 <SelectValue />
                                             </SelectTrigger>
