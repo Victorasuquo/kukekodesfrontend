@@ -23,7 +23,7 @@ const levelLabels: Record<string, string> = {
 };
 
 export default function Dashboard() {
-    const { user, logout, isAdmin, isInstructor } = useAuth();
+    const { user, logout, isAdmin } = useAuth();
     const navigate = useNavigate();
     const [courses, setCourses] = useState<Course[]>([]);
     const [loading, setLoading] = useState(true);
@@ -77,9 +77,14 @@ export default function Dashboard() {
                         <p className="text-muted-foreground mt-1">
                             Continue your learning journey
                         </p>
+                        {user.learnerId && (
+                            <p className="text-sm text-muted-foreground mt-2">
+                                Learner ID: <span className="font-mono text-foreground">{user.learnerId}</span>
+                            </p>
+                        )}
                     </div>
                     <div className="flex items-center gap-3">
-                        {(isAdmin || isInstructor) && (
+                        {isAdmin && (
                             <Button variant="outline" asChild>
                                 <Link to="/admin">
                                     <Settings className="w-4 h-4 mr-2" />

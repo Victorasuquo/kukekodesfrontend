@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import api, { getAccessToken, getStoredUser, clearTokens, setStoredUser, User } from '@/services/api';
+import api, { clearTokens, setStoredUser, Membership, User } from '@/services/api';
 
 // =============================================================================
 // Types
@@ -7,6 +7,7 @@ import api, { getAccessToken, getStoredUser, clearTokens, setStoredUser, User } 
 
 export interface AppUser {
   id: string;
+  learnerId?: string;
   username: string;
   email: string;
   name: string;
@@ -15,12 +16,13 @@ export interface AppUser {
   role: 'admin' | 'instructor' | 'student';
   profilePicture?: string;
   country?: string;
+  memberships: Membership[];
 }
 
 interface AuthContextType {
   user: AppUser | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  login: (learnerId: string, password: string) => Promise<{ success: boolean; error?: string }>;
   adminLogin: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signup: (data: {
     email: string;
@@ -45,10 +47,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // Helper Functions
 // =============================================================================
 
-function mapUserToAppUser(user: User): AppUser {
+function mapUserToAppUser(user: User, memberships: Membership[] = []): AppUser {
   return {
     id: user.id,
-    username: user.username || user.email.split('@')[0],
+    learnerId: user.learner_id || undefined,
+    username: user.username || user.learner_id || user.email.split('@')[0],
     email: user.email,
     name: `${user.first_name} ${user.last_name}`.trim(),
     firstName: user.first_name,
@@ -56,6 +59,7 @@ function mapUserToAppUser(user: User): AppUser {
     role: user.role,
     profilePicture: user.profile_picture_url || undefined,
     country: user.country || undefined,
+    memberships,
   };
 }
 
@@ -68,28 +72,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   const refreshUser = () => {
-    const storedUser = getStoredUser();
-    if (storedUser) {
-      setUser(mapUserToAppUser(storedUser));
-    } else {
+    void loadSession();
+  };
+
+  const loadSession = async () => {
+    try {
+      const refreshed = await api.refreshAccessToken() || await api.refreshAdminAccessToken();
+      if (!refreshed) {
+        clearTokens();
+        setUser(null);
+        return;
+      }
+      const session = await api.getSession();
+      setStoredUser(session.user);
+      setUser(mapUserToAppUser(session.user, session.memberships));
+    } catch {
+      clearTokens();
       setUser(null);
     }
   };
 
   // Check for existing session on mount
   useEffect(() => {
-    const token = getAccessToken();
-    const storedUser = getStoredUser();
-
-    if (token && storedUser) {
-      setUser(mapUserToAppUser(storedUser));
-    }
-    setIsLoading(false);
+    loadSession().finally(() => setIsLoading(false));
   }, []);
 
-  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+  const login = async (learnerId: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      const response = await api.login(email, password);
+      const response = await api.login(learnerId, password);
       setUser(mapUserToAppUser(response.user));
       return { success: true };
     } catch (error) {

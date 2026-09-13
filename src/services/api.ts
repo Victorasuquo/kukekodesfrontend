@@ -15,6 +15,7 @@ const API_PREFIX = '/api/v1';
 const TOKEN_KEY = 'kukekodes_access_token';
 const REFRESH_TOKEN_KEY = 'kukekodes_refresh_token';
 const USER_KEY = 'kukekodes_user';
+let accessTokenMemory: string | null = null;
 
 // =============================================================================
 // TYPES - Matching exact API response schemas
@@ -24,6 +25,7 @@ export interface User {
   id: string;
   learner_id?: string | null;
   email: string;
+  contact_email?: string | null;
   first_name: string;
   last_name: string;
   username?: string | null;
@@ -45,6 +47,57 @@ export interface AuthResponse {
   user: User;
   token: AuthToken;
   message: string;
+}
+
+export interface Membership {
+  organization_id: string;
+  role: 'owner' | 'admin' | 'instructor' | 'student';
+  status: string;
+  joined_at: string;
+}
+
+export interface SessionResponse {
+  user: User;
+  memberships: Membership[];
+}
+
+export interface Organization {
+  id: string;
+  slug: string;
+  name: string;
+  owner_user_id: string;
+  status: string;
+  timezone: string;
+  created_at: string;
+}
+
+export interface OrganizationMembership {
+  id: string;
+  organization_id: string;
+  user_id: string;
+  role: string;
+  status: string;
+  joined_at: string;
+}
+
+export interface OrganizationInvitation {
+  id: string;
+  organization_id: string;
+  recipient_email?: string | null;
+  role: string;
+  expires_at: string;
+  accepted_at?: string | null;
+  created_at: string;
+  token?: string | null;
+}
+
+export interface Cohort {
+  id: string;
+  organization_id: string;
+  name: string;
+  description?: string | null;
+  status: string;
+  created_at: string;
 }
 
 export interface Lesson {
@@ -169,19 +222,21 @@ export interface LiveSession {
 // =============================================================================
 
 export function getAccessToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY);
+  return accessTokenMemory || localStorage.getItem(TOKEN_KEY);
 }
 
 export function getRefreshToken(): string | null {
   return localStorage.getItem(REFRESH_TOKEN_KEY);
 }
 
-export function setTokens(accessToken: string, refreshToken: string): void {
-  localStorage.setItem(TOKEN_KEY, accessToken);
-  localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+export function setTokens(accessToken: string, _refreshToken: string): void {
+  accessTokenMemory = accessToken;
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
 }
 
 export function clearTokens(): void {
+  accessTokenMemory = null;
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
@@ -346,10 +401,10 @@ class APIService {
     return response;
   }
 
-  async login(email: string, password: string): Promise<AuthResponse> {
+  async login(learnerId: string, password: string): Promise<AuthResponse> {
     const response = await this.request<AuthResponse>(
       '/auth/login',
-      { method: 'POST', body: { email, password } as unknown as BodyInit },
+      { method: 'POST', body: { learner_id: learnerId, password } as unknown as BodyInit },
       false
     );
 
@@ -373,31 +428,119 @@ class APIService {
     return response;
   }
 
-  async refreshAccessToken(): Promise<boolean> {
-    const refreshToken = getRefreshToken();
-    if (!refreshToken) return false;
-
+  async refreshAdminAccessToken(): Promise<boolean> {
     try {
       const response = await this.request<{ access_token: string; token_type: string; expires_in: number }>(
-        '/auth/refresh-token',
-        { method: 'POST', body: { refresh_token: refreshToken } as unknown as BodyInit },
+        '/admin/auth/refresh',
+        { method: 'POST' },
         false
       );
 
-      localStorage.setItem(TOKEN_KEY, response.access_token);
+      accessTokenMemory = response.access_token;
+      localStorage.removeItem(TOKEN_KEY);
       return true;
     } catch {
       return false;
     }
   }
 
-  async logout(): Promise<void> {
+  async refreshAccessToken(): Promise<boolean> {
     try {
-      await this.request<{ success: boolean; message: string }>('/auth/logout', { method: 'POST' });
+      const response = await this.request<{ access_token: string; token_type: string; expires_in: number }>(
+        '/auth/refresh',
+        { method: 'POST' },
+        false
+      );
+
+      accessTokenMemory = response.access_token;
+      localStorage.removeItem(TOKEN_KEY);
+      return true;
     } catch {
-      // Continue with local logout even if server fails
+      return false;
     }
+  }
+
+  async getSession(): Promise<SessionResponse> {
+    return this.request<SessionResponse>('/auth/session');
+  }
+
+  async logout(): Promise<void> {
+    await Promise.allSettled([
+      this.request<{ success: boolean; message: string }>('/auth/logout', { method: 'POST' }),
+      this.request<{ success: boolean; message: string }>('/admin/auth/logout', { method: 'POST' }, false),
+    ]);
     clearTokens();
+  }
+
+  async logoutAll(): Promise<void> {
+    try {
+      await Promise.allSettled([
+        this.request<{ success: boolean; message: string }>('/auth/logout-all', { method: 'POST' }),
+        this.request<{ success: boolean; message: string }>('/admin/auth/logout', { method: 'POST' }, false),
+      ]);
+    } finally {
+      clearTokens();
+    }
+  }
+
+  async requestPasswordRecovery(contactEmail: string, learnerId: string): Promise<{ success: boolean; message: string }> {
+    return this.request('/auth/recovery/request', {
+      method: 'POST',
+      body: { contact_email: contactEmail, learner_id: learnerId } as unknown as BodyInit,
+    }, false);
+  }
+
+  async listOrganizations(): Promise<Organization[]> {
+    return this.request<Organization[]>('/organizations');
+  }
+
+  async createOrganization(data: { name: string; slug: string; timezone?: string }): Promise<Organization> {
+    return this.request<Organization>('/organizations', {
+      method: 'POST',
+      body: data as unknown as BodyInit,
+    });
+  }
+
+  async listOrganizationMemberships(organizationId: string): Promise<OrganizationMembership[]> {
+    return this.request<OrganizationMembership[]>(`/organizations/${organizationId}/memberships`);
+  }
+
+  async addOrganizationMemberByLearnerId(data: {
+    organizationId: string;
+    learnerId: string;
+    role: 'owner' | 'admin' | 'instructor' | 'student';
+  }): Promise<OrganizationMembership> {
+    return this.request<OrganizationMembership>(`/organizations/${data.organizationId}/memberships/by-learner-id`, {
+      method: 'POST',
+      body: { learner_id: data.learnerId, role: data.role } as unknown as BodyInit,
+    });
+  }
+
+  async createOrganizationInvitation(data: {
+    organizationId: string;
+    recipientEmail?: string;
+    role: 'owner' | 'admin' | 'instructor' | 'student';
+    expiresInDays?: number;
+  }): Promise<OrganizationInvitation> {
+    return this.request<OrganizationInvitation>(`/organizations/${data.organizationId}/invitations`, {
+      method: 'POST',
+      body: {
+        recipient_email: data.recipientEmail || null,
+        role: data.role,
+        expires_in_days: data.expiresInDays || 7,
+      } as unknown as BodyInit,
+    });
+  }
+
+  async listCohorts(organizationId: string): Promise<Cohort[]> {
+    return this.request<Cohort[]>(`/organizations/${organizationId}/cohorts`);
+  }
+
+  async createCohort(data: { organizationId: string; name: string; description?: string }): Promise<Cohort> {
+    return this.request<Cohort>(`/organizations/${data.organizationId}/cohorts`, {
+      method: 'POST',
+      body: { name: data.name, description: data.description || null } as unknown as BodyInit,
+    });
   }
 
   // ---------------------------------------------------------------------------

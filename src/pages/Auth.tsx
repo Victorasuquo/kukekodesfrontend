@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Loader2, Mail, Lock, User, Globe } from 'lucide-react';
+import { ArrowLeft, Loader2, Mail, Lock, User, Globe, BadgeCheck } from 'lucide-react';
 
 // Common countries for the dropdown
 const COUNTRIES = [
@@ -34,8 +34,8 @@ export default function Auth() {
   const defaultTab = searchParams.get('tab') === 'signup' ? 'signup' : 'login';
   const defaultEmail = searchParams.get('email') || '';
 
-  // Login form state (email-based)
-  const [loginEmail, setLoginEmail] = useState('');
+  // Login form state
+  const [loginLearnerId, setLoginLearnerId] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
 
   // Signup form state
@@ -49,7 +49,7 @@ export default function Auth() {
     e.preventDefault();
     setIsLoading(true);
 
-    const result = await login(loginEmail, loginPassword);
+    const result = await login(loginLearnerId, loginPassword);
 
     if (result.success) {
       toast({ title: 'Welcome back!', description: 'You have successfully logged in.' });
@@ -87,7 +87,7 @@ export default function Auth() {
     });
 
     if (result.success) {
-      toast({ title: 'Account created!', description: 'Welcome to KukeKodes!' });
+      toast({ title: 'Account created!', description: 'Your learner ID is now shown on your dashboard.' });
       navigate('/dashboard');
     } else {
       toast({ title: 'Signup failed', description: result.error, variant: 'destructive' });
@@ -125,19 +125,23 @@ export default function Auth() {
               <TabsContent value="login">
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="login-email">Email</Label>
+                    <Label htmlFor="login-learner-id">Learner ID</Label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <BadgeCheck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <Input
-                        id="login-email"
-                        type="email"
-                        placeholder="you@example.com"
-                        value={loginEmail}
-                        onChange={(e) => setLoginEmail(e.target.value)}
+                        id="login-learner-id"
+                        type="text"
+                        placeholder="KK-1234ABCD"
+                        value={loginLearnerId}
+                        onChange={(e) => setLoginLearnerId(e.target.value.toUpperCase())}
                         className="pl-10"
+                        autoCapitalize="characters"
                         required
                       />
                     </div>
+                    <p className="text-xs text-muted-foreground">
+                      Learners can share a contact email, so sign in with your unique learner ID.
+                    </p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="login-password">Password</Label>

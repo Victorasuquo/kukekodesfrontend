@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import {
-    Plus, BookOpen, Users, Edit, Trash2, Eye, ArrowLeft, Search
+    Plus, BookOpen, Users, Edit, Trash2, Eye, ArrowLeft, Search, Building2
 } from 'lucide-react';
 import coursePython from '@/assets/course-python.jpg';
 
@@ -83,6 +83,12 @@ export default function AdminDashboard() {
                         <h1 className="text-3xl font-bold">Admin Dashboard</h1>
                         <p className="text-muted-foreground">Manage courses, modules, and lessons</p>
                     </div>
+                    <Button variant="outline" asChild>
+                        <Link to="/admin/organizations">
+                            <Building2 className="w-4 h-4 mr-2" />
+                            Organizations
+                        </Link>
+                    </Button>
                 </div>
 
                 {/* Stats */}

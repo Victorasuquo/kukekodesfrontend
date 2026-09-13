@@ -17,6 +17,7 @@ import ForumPage from "./pages/ForumPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import CourseEditor from "./pages/admin/CourseEditor";
 import AdminLogin from "./pages/admin/AdminLogin";
+import AdminOrganizations from "./pages/admin/AdminOrganizations";
 import { RequirePlatformAdmin, RequireSession } from "@/components/auth/RouteGuards";
 import "./App.css";
 
@@ -52,6 +53,7 @@ const App = () => (
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route element={<RequirePlatformAdmin />}>
                 <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="/admin/organizations" element={<AdminOrganizations />} />
                 <Route path="/admin/courses/new" element={<CourseEditor />} />
                 <Route path="/admin/courses/:courseId" element={<CourseEditor />} />
               </Route>
