@@ -189,6 +189,14 @@ export interface AdminCoursesAnalytics {
   top_courses: Array<{ course_id: string; title: string; enrollments: number }>;
 }
 
+export interface AdminEmailHealth {
+  provider: 'resend';
+  configured: boolean;
+  from_email: string;
+  webhook_configured: boolean;
+  status: string;
+}
+
 export interface APIError {
   code: string;
   message: string;
@@ -727,6 +735,10 @@ class APIService {
 
   async getAdminCoursesAnalytics(): Promise<AdminCoursesAnalytics> {
     return this.request<AdminCoursesAnalytics>('/admin/analytics/courses');
+  }
+
+  async getAdminEmailHealth(): Promise<AdminEmailHealth> {
+    return this.request<AdminEmailHealth>('/admin/email/health');
   }
 
   async getCourse(id: string): Promise<Course> {

@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/layout/Navbar';
 import { useAuth } from '@/contexts/AuthContext';
 import api from '@/services/api';
-import type { Course, AdminOverview, AdminUsersAnalytics, AdminCoursesAnalytics } from '@/services/api';
+import type { Course, AdminOverview, AdminUsersAnalytics, AdminCoursesAnalytics, AdminEmailHealth } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +29,7 @@ export default function AdminDashboard() {
     const [overview, setOverview] = useState<AdminOverview | null>(null);
     const [userAnalytics, setUserAnalytics] = useState<AdminUsersAnalytics | null>(null);
     const [courseAnalytics, setCourseAnalytics] = useState<AdminCoursesAnalytics | null>(null);
+    const [emailHealth, setEmailHealth] = useState<AdminEmailHealth | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
@@ -52,14 +53,16 @@ export default function AdminDashboard() {
             setAnalyticsLoading(true);
             setAnalyticsError(null);
             try {
-                const [overviewResponse, usersResponse, coursesResponse] = await Promise.all([
+                const [overviewResponse, usersResponse, coursesResponse, emailResponse] = await Promise.all([
                     api.getAdminOverview(),
                     api.getAdminUsersAnalytics(),
                     api.getAdminCoursesAnalytics(),
+                    api.getAdminEmailHealth(),
                 ]);
                 setOverview(overviewResponse);
                 setUserAnalytics(usersResponse);
                 setCourseAnalytics(coursesResponse);
+                setEmailHealth(emailResponse);
             } catch (error) {
                 console.error('Failed to fetch admin analytics', error);
                 setAnalyticsError('Analytics are temporarily unavailable.');
@@ -199,6 +202,10 @@ export default function AdminDashboard() {
                     <Card><CardHeader><CardTitle className="text-base">New this week</CardTitle></CardHeader><CardContent>
                         <p className="text-3xl font-bold">{analyticsLoading ? '—' : (overview?.new_users_this_week ?? 0)}</p>
                         <p className="text-sm text-muted-foreground">New learner accounts</p>
+                    </CardContent></Card>
+                    <Card><CardHeader><CardTitle className="text-base">Email delivery</CardTitle></CardHeader><CardContent>
+                        <p className="text-xl font-bold capitalize">{analyticsLoading ? '—' : (emailHealth?.status.replace('_', ' ') ?? 'unknown')}</p>
+                        <p className="text-sm text-muted-foreground">Resend · {emailHealth?.webhook_configured ? 'webhooks on' : 'webhooks not configured'}</p>
                     </CardContent></Card>
                 </div>
 
