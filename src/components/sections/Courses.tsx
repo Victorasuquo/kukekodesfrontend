@@ -39,7 +39,7 @@ export function Courses() {
 
   // Count total lessons from modules
   const getLessonCount = (course: Course): number => {
-    if (!course.modules) return 0;
+    if (!course.modules) return course.lesson_count || 0;
     return course.modules.reduce((total, module) => total + (module.lessons?.length || 0), 0);
   };
 
