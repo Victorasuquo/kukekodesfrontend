@@ -139,6 +139,7 @@ export interface Course {
   is_free: boolean;
   cover_image_url?: string | null;
   thumbnail_url?: string | null;
+  lesson_count?: number;
   is_featured?: boolean;
   average_rating?: string | null;
   total_reviews?: number;
