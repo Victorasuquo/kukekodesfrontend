@@ -83,10 +83,11 @@ export function AICoach() {
 }
 
 // Function component to be used in CourseViewer
-export function AITutor({ lessonId }: { lessonId: number }) {
+export function AITutor({ lessonId }: { lessonId: string }) {
   const [messages, setMessages] = useState<{ role: 'user' | 'assistant', content: string }[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [quota, setQuota] = useState<number | null>(null);
   const { toast } = useToast();
 
   const handleSend = async () => {
@@ -100,8 +101,10 @@ export function AITutor({ lessonId }: { lessonId: number }) {
     try {
       const response = await api.askAI(userMsg, lessonId);
       setMessages(prev => [...prev, { role: 'assistant', content: response.answer }]);
+      if (typeof response.remaining_quota === 'number') setQuota(response.remaining_quota);
     } catch (error) {
-      toast({ title: "Error", description: "Failed to get response from AI", variant: "destructive" });
+      const message = error instanceof Error ? error.message : 'AI Coach is unavailable right now.';
+      toast({ title: "AI Coach unavailable", description: message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -121,7 +124,7 @@ export function AITutor({ lessonId }: { lessonId: number }) {
         {messages.length === 0 && (
           <div className="text-center text-muted-foreground mt-8">
             <Bot className="w-8 h-8 mx-auto mb-2 opacity-50" />
-            <p>Ask a question about this lesson!</p>
+            <p>Ask a question about this lesson. Responses use only the course context.</p>
           </div>
         )}
       </div>
@@ -138,6 +141,7 @@ export function AITutor({ lessonId }: { lessonId: number }) {
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
         </Button>
       </div>
+      {quota !== null && <p className="px-3 pb-2 text-xs text-muted-foreground">{quota} AI requests remaining in this period.</p>}
     </div>
   );
 }

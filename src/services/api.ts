@@ -113,6 +113,7 @@ export interface Lesson {
   resources?: Record<string, string> | null;
   order: number;
   status: 'draft' | 'published';
+  exercise_runtime?: 'python' | 'javascript' | null;
   created_at: string;
 }
 
@@ -292,6 +293,41 @@ export interface LiveSession {
   is_active: boolean;
   youtube_live_url?: string | null;
   instructor?: Pick<User, 'first_name' | 'last_name'> | null;
+  recording_url?: string | null;
+  attendance_status?: 'joined' | 'attended' | null;
+}
+
+export interface CommunityThread {
+  id: string;
+  title: string;
+  content: string;
+  course_id?: string | null;
+  organization_id?: string | null;
+  author?: { id: string; name?: string; username?: string } | null;
+  created_at: string;
+  updated_at?: string;
+  replies_count?: number;
+  moderation_status?: 'visible' | 'pending' | 'hidden' | 'removed';
+}
+
+export interface CommunityReply {
+  id: string;
+  thread_id: string;
+  content: string;
+  author?: { id: string; name?: string; username?: string } | null;
+  created_at: string;
+  moderation_status?: 'visible' | 'pending' | 'hidden' | 'removed';
+}
+
+export interface CommunityReport { id: string; status: string; created_at: string; }
+export interface CodeSubmission {
+  submission_id: string;
+  runtime: 'javascript' | 'python';
+  status: 'queued' | 'running' | 'completed' | 'failed';
+  output?: string | null;
+  error?: string | null;
+  score?: number | null;
+  created_at?: string;
 }
 
 // =============================================================================
@@ -756,7 +792,7 @@ class APIService {
   // Launch-plan endpoints. These call real backend contracts once mounted.
   // UI components must render failure/unavailable states instead of fake data.
   // ---------------------------------------------------------------------------
-  async askAI(message: string, lessonId: number): Promise<{ answer: string }> {
+  async askAI(message: string, lessonId: string): Promise<{ answer: string; remaining_quota?: number }> {
     return this.request<{ answer: string }>('/ai/coach', {
       method: 'POST',
       body: { message, lesson_id: lessonId } as unknown as BodyInit,
@@ -843,16 +879,16 @@ class APIService {
     return this.request<APICertificate>(`/progress/certificate/${courseId}`);
   }
 
-  async runCode(code: string, lessonId: number): Promise<{ submission_id: number }> {
-    return this.request<{ submission_id: number }>('/code/submissions', {
+  async runCode(code: string, lessonId: string, runtime: 'python' | 'javascript' = 'python'): Promise<{ submission_id: string }> {
+    return this.request<{ submission_id: string }>('/code/submissions', {
       method: 'POST',
-      body: { source: code, lesson_id: lessonId, runtime: 'python' } as unknown as BodyInit,
+      body: { source: code, lesson_id: lessonId, runtime } as unknown as BodyInit,
     });
   }
 
   async getSubmissionStatus(
-    submissionId: number
-  ): Promise<{ status: 'queued' | 'running' | 'completed' | 'failed'; output?: string; error?: string }> {
+    submissionId: string
+  ): Promise<CodeSubmission> {
     return this.request(`/code/submissions/${submissionId}`);
   }
 
@@ -866,10 +902,50 @@ class APIService {
     return Array.isArray(response) ? response : response.data;
   }
 
-  async joinSession(sessionId: number): Promise<{ join_url?: string }> {
+  async joinSession(sessionId: string | number): Promise<{ join_url?: string }> {
     return this.request<{ join_url?: string }>(`/live-sessions/${sessionId}/join`, {
       method: 'POST',
     });
+  }
+
+  async getSessionDetails(sessionId: string | number): Promise<LiveSession> {
+    return this.request<LiveSession>(`/live-sessions/${sessionId}`);
+  }
+
+  async markSessionAttendance(sessionId: string | number): Promise<{ status: string }> {
+    return this.request<{ status: string }>(`/live-sessions/${sessionId}/attendance`, { method: 'POST' });
+  }
+
+  async listCommunityThreads(params?: { course_id?: string; organization_id?: string; page?: number; page_size?: number }): Promise<PaginatedResponse<CommunityThread>> {
+    const query = new URLSearchParams();
+    Object.entries(params || {}).forEach(([key, value]) => { if (value !== undefined) query.set(key, String(value)); });
+    return this.request<PaginatedResponse<CommunityThread>>(`/community/threads${query.size ? `?${query}` : ''}`);
+  }
+
+  async createCommunityThread(data: { title: string; content: string; course_id?: string; organization_id?: string }): Promise<CommunityThread> {
+    return this.request<CommunityThread>('/community/threads', { method: 'POST', body: data as unknown as BodyInit });
+  }
+
+  async listCommunityReplies(threadId: string): Promise<PaginatedResponse<CommunityReply>> {
+    return this.request<PaginatedResponse<CommunityReply>>(`/community/threads/${threadId}/replies`);
+  }
+
+  async createCommunityReply(threadId: string, content: string): Promise<CommunityReply> {
+    return this.request<CommunityReply>(`/community/threads/${threadId}/replies`, { method: 'POST', body: { content } as unknown as BodyInit });
+  }
+
+  async reportCommunityContent(data: { thread_id?: string; reply_id?: string; reason: string }): Promise<CommunityReport> {
+    const content_id = data.thread_id || data.reply_id;
+    return this.request<CommunityReport>('/community/reports', { method: 'POST', body: { content_id, reason: data.reason } as unknown as BodyInit });
+  }
+
+  async blockCommunityUser(userId: string): Promise<{ status: string }> {
+    return this.request<{ status: string }>('/community/blocks', { method: 'POST', body: { user_id: userId } as unknown as BodyInit });
+  }
+
+  async getCodeSubmissionHistory(lessonId: string): Promise<CodeSubmission[]> {
+    const response = await this.request<CodeSubmission[] | { data: CodeSubmission[] }>(`/code/submissions?lesson_id=${encodeURIComponent(lessonId)}`);
+    return Array.isArray(response) ? response : response.data;
   }
 
   // ---------------------------------------------------------------------------

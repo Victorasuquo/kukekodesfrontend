@@ -11,7 +11,8 @@ import { SessionCardSkeleton } from '@/components/ui/card-skeleton';
 export function LiveSessions() {
     const [sessions, setSessions] = useState<LiveSession[]>([]);
     const [loading, setLoading] = useState(true);
-    const [joining, setJoining] = useState<number | null>(null);
+    const [joining, setJoining] = useState<string | number | null>(null);
+    const [error, setError] = useState<string | null>(null);
     const { toast } = useToast();
 
     useEffect(() => {
@@ -20,8 +21,8 @@ export function LiveSessions() {
                 const data = await api.getLiveSessions();
                 setSessions(data);
             } catch (error) {
-                // Error logged by api.ts
-                toast({ title: 'Error', description: 'Failed to load live sessions', variant: 'destructive' });
+                const message = error instanceof Error ? error.message : 'Failed to load live sessions';
+                setError(message);
             } finally {
                 setLoading(false);
             }
@@ -30,7 +31,7 @@ export function LiveSessions() {
         fetchSessions();
     }, [toast]);
 
-    const handleJoinSession = async (sessionId: number, url: string) => {
+    const handleJoinSession = async (sessionId: string | number, url: string) => {
         setJoining(sessionId);
         try {
             await api.joinSession(sessionId);
@@ -52,6 +53,8 @@ export function LiveSessions() {
             </div>
         );
     }
+
+    if (error) return <Card><CardContent className="p-8 text-center"><p className="text-destructive">{error}</p><Button variant="outline" className="mt-4" onClick={() => window.location.reload()}>Retry</Button></CardContent></Card>;
 
     const upcomingSessions = sessions.filter(s => !s.is_active && new Date(s.scheduled_start) > new Date());
     const activeSessions = sessions.filter(s => s.is_active);
@@ -114,8 +117,8 @@ function SessionCard({
     isPast = false
 }: {
     session: LiveSession;
-    onJoin: (id: number, url: string) => void;
-    joining: number | null;
+    onJoin: (id: string | number, url: string) => void;
+    joining: string | number | null;
     isActive?: boolean;
     isPast?: boolean;
 }) {
@@ -154,8 +157,8 @@ function SessionCard({
                 <Button
                     className="w-full"
                     variant={isActive ? "default" : "secondary"}
-                    disabled={!session.youtube_live_url || joining === session.id}
-                    onClick={() => session.youtube_live_url && onJoin(session.id, session.youtube_live_url)}
+                    disabled={(!session.youtube_live_url && !session.recording_url) || joining === session.id}
+                    onClick={() => (session.youtube_live_url || session.recording_url) && onJoin(session.id, (session.youtube_live_url || session.recording_url) as string)}
                 >
                     {joining === session.id ? (
                         <Loader2 className="w-4 h-4 animate-spin mr-2" />

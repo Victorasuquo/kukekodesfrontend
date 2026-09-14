@@ -1,25 +1,29 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import api from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Loader2, Play, Terminal } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 
 interface CodeEditorProps {
-    lessonId: number;
+    lessonId: string;
+    runtime?: 'python' | 'javascript';
 }
 
-export function CodeEditor({ lessonId }: CodeEditorProps) {
-    const [code, setCode] = useState("print('Hello, World!')");
+export function CodeEditor({ lessonId, runtime = 'javascript' }: CodeEditorProps) {
+    const [code, setCode] = useState("console.log('Hello, World!');");
     const [output, setOutput] = useState('');
     const [loading, setLoading] = useState(false);
+    const [history, setHistory] = useState<Array<{ submission_id: string; status: string; score?: number | null }>>([]);
     const { toast } = useToast();
+
+    useEffect(() => { void api.getCodeSubmissionHistory(lessonId).then(setHistory).catch(() => setHistory([])); }, [lessonId]);
 
     const runCode = async () => {
         setLoading(true);
         setOutput('');
 
         try {
-            const { submission_id } = await api.runCode(code, lessonId);
+            const { submission_id } = await api.runCode(code, lessonId, runtime);
 
             if (submission_id) {
                 checkStatus(submission_id);
@@ -30,12 +34,13 @@ export function CodeEditor({ lessonId }: CodeEditorProps) {
         }
     };
 
-    const checkStatus = async (submissionId: number) => {
+    const checkStatus = async (submissionId: string) => {
         try {
             const data = await api.getSubmissionStatus(submissionId);
 
             if (data.status === 'completed' || data.status === 'failed') {
                 setOutput(data.output || data.error || 'No output');
+                setHistory((items) => [{ submission_id: submissionId, status: data.status, score: data.score }, ...items.filter((item) => item.submission_id !== submissionId)]);
                 setLoading(false);
             } else {
                 setTimeout(() => checkStatus(submissionId), 1000);
@@ -51,7 +56,7 @@ export function CodeEditor({ lessonId }: CodeEditorProps) {
             <div className="flex items-center justify-between p-2 border-b border-border bg-muted/30">
                 <div className="flex items-center gap-2 text-sm text-foreground font-medium px-2">
                     <Terminal className="w-4 h-4" />
-                    Python Playground
+                    {runtime === 'python' ? 'Python' : 'JavaScript'} Playground
                 </div>
                 <Button size="sm" onClick={runCode} disabled={loading} className="h-8">
                     {loading ? (
@@ -67,6 +72,8 @@ export function CodeEditor({ lessonId }: CodeEditorProps) {
                     )}
                 </Button>
             </div>
+
+            {history.length > 0 && <div className="border-t border-border px-3 py-2 text-xs text-muted-foreground">Recent submissions: {history.slice(0, 3).map((item) => `${item.status}${item.score != null ? ` (${item.score}%)` : ''}`).join(' · ')}</div>}
 
             <div className="flex-1 flex flex-col md:flex-row">
                 {/* Editor Area */}

@@ -1,72 +1,25 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { MessageSquare, Plus, Send, Flag, Ban, Loader2, WifiOff } from 'lucide-react';
+import api, { CommunityReply, CommunityThread } from '@/services/api';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { MessageSquare, Plus, Users } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useToast } from '@/hooks/use-toast';
 
 export function Forum() {
-    return (
-        <div className="space-y-6 pt-16">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-3xl font-bold">Community Forum</h2>
-                    <p className="text-muted-foreground">Connect with other learners and share knowledge.</p>
-                </div>
-                <Button disabled>
-                    <Plus className="w-4 h-4 mr-2" /> New Thread
-                </Button>
-            </div>
-
-            <Card className="p-12 text-center">
-                <MessageSquare className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-xl font-semibold mb-2">Coming Soon</h3>
-                <p className="text-muted-foreground max-w-md mx-auto">
-                    The community forum is being built. Soon you'll be able to discuss courses,
-                    ask questions, and connect with fellow learners.
-                </p>
-            </Card>
-
-            {/* Feature preview cards */}
-            <div className="grid md:grid-cols-3 gap-4 mt-8">
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-lg flex items-center gap-2">
-                            <MessageSquare className="w-5 h-5 text-primary" />
-                            Discussions
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-sm text-muted-foreground">
-                            Ask questions and get help from the community on any topic.
-                        </p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-lg flex items-center gap-2">
-                            <Users className="w-5 h-5 text-primary" />
-                            Study Groups
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-sm text-muted-foreground">
-                            Join study groups to learn together with peers.
-                        </p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-lg flex items-center gap-2">
-                            <Plus className="w-5 h-5 text-primary" />
-                            Share Projects
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-sm text-muted-foreground">
-                            Showcase your projects and get feedback from instructors.
-                        </p>
-                    </CardContent>
-                </Card>
-            </div>
-        </div>
-    );
+  const [threads, setThreads] = useState<CommunityThread[]>([]); const [selected, setSelected] = useState<CommunityThread | null>(null); const [replies, setReplies] = useState<CommunityReply[]>([]); const [loading, setLoading] = useState(true); const [error, setError] = useState<string | null>(null); const [showComposer, setShowComposer] = useState(false); const [title, setTitle] = useState(''); const [content, setContent] = useState(''); const [reply, setReply] = useState(''); const [saving, setSaving] = useState(false); const { toast } = useToast();
+  const loadThreads = async () => { setLoading(true); setError(null); try { const result = await api.listCommunityThreads({ page: 1, page_size: 20 }); setThreads(result.data); } catch (e) { setError(e instanceof Error ? e.message : 'Unable to load community discussions.'); } finally { setLoading(false); } };
+  useEffect(() => { void loadThreads(); }, []);
+  const openThread = async (thread: CommunityThread) => { setSelected(thread); try { const result = await api.listCommunityReplies(thread.id); setReplies(result.data); } catch (e) { toast({ title: 'Unable to load replies', description: e instanceof Error ? e.message : 'Try again.', variant: 'destructive' }); } };
+  const createThread = async () => { if (!title.trim() || !content.trim()) return; setSaving(true); try { const created = await api.createCommunityThread({ title: title.trim(), content: content.trim() }); setThreads((items) => [created, ...items]); setTitle(''); setContent(''); setShowComposer(false); toast({ title: 'Thread posted' }); } catch (e) { toast({ title: 'Could not post thread', description: e instanceof Error ? e.message : 'Try again.', variant: 'destructive' }); } finally { setSaving(false); } };
+  const createReply = async () => { if (!selected || !reply.trim()) return; setSaving(true); try { const created = await api.createCommunityReply(selected.id, reply.trim()); setReplies((items) => [...items, created]); setReply(''); } catch (e) { toast({ title: 'Could not post reply', description: e instanceof Error ? e.message : 'Try again.', variant: 'destructive' }); } finally { setSaving(false); } };
+  const report = async (threadId: string) => { try { await api.reportCommunityContent({ thread_id: threadId, reason: 'Inappropriate content' }); toast({ title: 'Report submitted' }); } catch (e) { toast({ title: 'Report failed', description: e instanceof Error ? e.message : 'Try again.', variant: 'destructive' }); } };
+  return <div className="space-y-6 pt-16"><div className="flex items-center justify-between"><div><h2 className="text-3xl font-bold">Community Forum</h2><p className="text-muted-foreground">Moderated course and organization discussions.</p></div><Button onClick={() => setShowComposer((v) => !v)}><Plus className="w-4 h-4 mr-2" /> New Thread</Button></div>
+    {showComposer && <Card><CardHeader><CardTitle>Start a discussion</CardTitle></CardHeader><CardContent className="space-y-3"><Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Thread title" /><Textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="What would you like to discuss?" /><Button onClick={createThread} disabled={saving || !title.trim() || !content.trim()}>{saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />} Post thread</Button></CardContent></Card>}
+    {error && <Alert variant="destructive"><WifiOff className="h-4 w-4" /><AlertDescription className="flex items-center justify-between">{error}<Button variant="outline" size="sm" onClick={() => void loadThreads()}>Retry</Button></AlertDescription></Alert>}
+    {loading ? <Card><CardContent className="p-12 text-center"><Loader2 className="w-8 h-8 mx-auto animate-spin text-primary" /><p className="mt-3 text-muted-foreground">Loading discussions…</p></CardContent></Card> : threads.length === 0 && !error ? <Card><CardContent className="p-12 text-center"><MessageSquare className="w-12 h-12 mx-auto text-muted-foreground mb-3" /><h3 className="font-semibold">No discussions yet</h3><p className="text-sm text-muted-foreground">Start the first moderated conversation.</p></CardContent></Card> : <div className="grid gap-4 md:grid-cols-2">{threads.map((thread) => <Card key={thread.id} className="cursor-pointer hover:border-primary/50" onClick={() => void openThread(thread)}><CardHeader><CardTitle className="text-lg">{thread.title}</CardTitle><p className="text-sm text-muted-foreground">{thread.author?.name || thread.author?.username || 'Learner'} · {new Date(thread.created_at).toLocaleDateString()}</p></CardHeader><CardContent><p className="line-clamp-3 text-sm">{thread.content}</p><div className="mt-4 flex items-center justify-between text-xs text-muted-foreground"><span>{thread.replies_count || 0} replies</span><Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); void report(thread.id); }}><Flag className="w-3 h-3 mr-1" /> Report</Button></div></CardContent></Card>)}</div>}
+    {selected && <Card><CardHeader><div className="flex justify-between"><div><CardTitle>{selected.title}</CardTitle><p className="text-sm text-muted-foreground">{selected.content}</p></div><Button variant="ghost" size="sm" onClick={() => setSelected(null)}>Close</Button></div></CardHeader><CardContent className="space-y-4"><div className="space-y-3">{replies.length === 0 ? <p className="text-sm text-muted-foreground">No replies yet.</p> : replies.map((item) => <div key={item.id} className="rounded-md bg-muted/40 p-3"><p className="text-sm">{item.content}</p><p className="mt-1 text-xs text-muted-foreground">{item.author?.name || item.author?.username || 'Learner'} · {new Date(item.created_at).toLocaleString()}</p></div>)}</div><div className="flex gap-2"><Textarea value={reply} onChange={(e) => setReply(e.target.value)} placeholder="Write a reply" /><Button onClick={createReply} disabled={saving || !reply.trim()}><Send className="w-4 h-4" /></Button></div><Button variant="outline" size="sm" onClick={() => selected.author?.id && api.blockCommunityUser(selected.author.id).then(() => toast({ title: 'User blocked' })).catch(() => toast({ title: 'Block failed', variant: 'destructive' }))}><Ban className="w-4 h-4 mr-2" /> Block author</Button></CardContent></Card>}
+  </div>;
 }
