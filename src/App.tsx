@@ -3,21 +3,22 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { lazy, Suspense } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
-import Auth from "./pages/Auth";
-import Dashboard from "./pages/Dashboard";
-import CourseViewer from "./pages/CourseViewer";
-import CoursesPage from "./pages/CoursesPage";
-import AboutPage from "./pages/AboutPage";
-import Live from "./pages/Live";
-import ForumPage from "./pages/ForumPage";
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import CourseEditor from "./pages/admin/CourseEditor";
-import AdminLogin from "./pages/admin/AdminLogin";
-import AdminOrganizations from "./pages/admin/AdminOrganizations";
+const Index = lazy(() => import("./pages/Index"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const Auth = lazy(() => import("./pages/Auth"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const CourseViewer = lazy(() => import("./pages/CourseViewer"));
+const CoursesPage = lazy(() => import("./pages/CoursesPage"));
+const AboutPage = lazy(() => import("./pages/AboutPage"));
+const Live = lazy(() => import("./pages/Live"));
+const ForumPage = lazy(() => import("./pages/ForumPage"));
+const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
+const CourseEditor = lazy(() => import("./pages/admin/CourseEditor"));
+const AdminLogin = lazy(() => import("./pages/admin/AdminLogin"));
+const AdminOrganizations = lazy(() => import("./pages/admin/AdminOrganizations"));
 import { RequirePlatformAdmin, RequireSession } from "@/components/auth/RouteGuards";
 import "./App.css";
 
@@ -39,6 +40,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <Suspense fallback={<div className="min-h-screen grid place-items-center text-muted-foreground">Loading…</div>}>
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
@@ -59,6 +61,7 @@ const App = () => (
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
+            </Suspense>
           </BrowserRouter>
         </TooltipProvider>
       </AuthProvider>
