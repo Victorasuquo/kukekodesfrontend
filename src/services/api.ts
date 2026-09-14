@@ -799,6 +799,10 @@ class APIService {
     });
   }
 
+  async getAIConversation(lessonId: string): Promise<Array<{ role: 'user' | 'assistant'; content: string }>> {
+    return this.request(`/ai/conversations?lesson_id=${encodeURIComponent(lessonId)}`);
+  }
+
   async getQuiz(quizId: string): Promise<APIQuiz> {
     return this.request<APIQuiz>(`/quizzes/${quizId}`);
   }

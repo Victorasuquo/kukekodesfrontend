@@ -2,6 +2,8 @@ import { motion } from "framer-motion";
 import { Bot, MessageCircle, Lightbulb, Bug, Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { useEffect } from "react";
+import ReactMarkdown from "react-markdown";
 import { ScrollReveal, StaggerContainer, StaggerItem } from "@/components/ui/scroll-reveal";
 import api from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
@@ -89,6 +91,7 @@ export function AITutor({ lessonId }: { lessonId: string }) {
   const [loading, setLoading] = useState(false);
   const [quota, setQuota] = useState<number | null>(null);
   const { toast } = useToast();
+  useEffect(() => { void api.getAIConversation(lessonId).then(setMessages).catch(() => undefined); }, [lessonId]);
 
   const handleSend = async () => {
     if (!input.trim() || loading) return;
@@ -117,7 +120,7 @@ export function AITutor({ lessonId }: { lessonId: string }) {
           <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'
               }`}>
-              {msg.content}
+              <ReactMarkdown className="prose prose-sm dark:prose-invert max-w-none">{msg.content}</ReactMarkdown>
             </div>
           </div>
         ))}
