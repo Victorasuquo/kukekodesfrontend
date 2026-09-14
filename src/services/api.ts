@@ -160,6 +160,35 @@ export interface PaginatedResponse<T> {
   };
 }
 
+export interface AdminOverview {
+  total_users: number;
+  total_students: number;
+  total_instructors: number;
+  total_courses: number;
+  total_enrollments: number;
+  total_lessons_completed: number;
+  average_completion_rate: number;
+  new_users_this_week: number;
+  new_courses_this_month: number;
+  timestamp: string;
+}
+
+export interface AdminUsersAnalytics {
+  total_users: number;
+  users_by_role: { students: number; instructors: number; admins: number };
+  new_users: { today: number; this_week: number; this_month: number };
+  active_users: { this_week: number; this_month: number };
+  top_countries: Array<{ country: string; users: number }>;
+}
+
+export interface AdminCoursesAnalytics {
+  total_courses: number;
+  published: number;
+  draft: number;
+  total_enrollments: number;
+  top_courses: Array<{ course_id: string; title: string; enrollments: number }>;
+}
+
 export interface APIError {
   code: string;
   message: string;
@@ -686,6 +715,18 @@ class APIService {
     if (params?.search) queryParams.append('search', params.search);
     const query = queryParams.toString() ? `?${queryParams.toString()}` : '';
     return this.request<PaginatedResponse<Course>>(`/admin/courses${query}`);
+  }
+
+  async getAdminOverview(): Promise<AdminOverview> {
+    return this.request<AdminOverview>('/admin/dashboard/overview');
+  }
+
+  async getAdminUsersAnalytics(): Promise<AdminUsersAnalytics> {
+    return this.request<AdminUsersAnalytics>('/admin/analytics/users');
+  }
+
+  async getAdminCoursesAnalytics(): Promise<AdminCoursesAnalytics> {
+    return this.request<AdminCoursesAnalytics>('/admin/analytics/courses');
   }
 
   async getCourse(id: string): Promise<Course> {

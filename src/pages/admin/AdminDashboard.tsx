@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/layout/Navbar';
 import { useAuth } from '@/contexts/AuthContext';
 import api from '@/services/api';
-import type { Course } from '@/services/api';
+import type { Course, AdminOverview, AdminUsersAnalytics, AdminCoursesAnalytics } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -24,6 +24,11 @@ export default function AdminDashboard() {
     const navigate = useNavigate();
     const [courses, setCourses] = useState<Course[]>([]);
     const [loading, setLoading] = useState(true);
+    const [analyticsLoading, setAnalyticsLoading] = useState(true);
+    const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+    const [overview, setOverview] = useState<AdminOverview | null>(null);
+    const [userAnalytics, setUserAnalytics] = useState<AdminUsersAnalytics | null>(null);
+    const [courseAnalytics, setCourseAnalytics] = useState<AdminCoursesAnalytics | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
@@ -43,7 +48,27 @@ export default function AdminDashboard() {
                 setLoading(false);
             }
         };
+        const fetchAnalytics = async () => {
+            setAnalyticsLoading(true);
+            setAnalyticsError(null);
+            try {
+                const [overviewResponse, usersResponse, coursesResponse] = await Promise.all([
+                    api.getAdminOverview(),
+                    api.getAdminUsersAnalytics(),
+                    api.getAdminCoursesAnalytics(),
+                ]);
+                setOverview(overviewResponse);
+                setUserAnalytics(usersResponse);
+                setCourseAnalytics(coursesResponse);
+            } catch (error) {
+                console.error('Failed to fetch admin analytics', error);
+                setAnalyticsError('Analytics are temporarily unavailable.');
+            } finally {
+                setAnalyticsLoading(false);
+            }
+        };
         fetchCourses();
+        fetchAnalytics();
     }, [user, isAdmin, navigate]);
 
     const filteredCourses = courses.filter(course =>
@@ -91,6 +116,15 @@ export default function AdminDashboard() {
                     </Button>
                 </div>
 
+                {analyticsError && (
+                    <Card className="mb-8 border-destructive/40">
+                        <CardContent className="p-4 flex items-center justify-between gap-4">
+                            <p className="text-sm text-destructive">{analyticsError}</p>
+                            <Button variant="outline" size="sm" onClick={() => window.location.reload()}>Retry</Button>
+                        </CardContent>
+                    </Card>
+                )}
+
                 {/* Stats */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                     <Card>
@@ -100,7 +134,7 @@ export default function AdminDashboard() {
                                     <BookOpen className="w-6 h-6 text-primary" />
                                 </div>
                                 <div>
-                                    <p className="text-2xl font-bold">{courses.length}</p>
+                                    <p className="text-2xl font-bold">{analyticsLoading ? '—' : (overview?.total_courses ?? 0)}</p>
                                     <p className="text-sm text-muted-foreground">Total Courses</p>
                                 </div>
                             </div>
@@ -114,7 +148,7 @@ export default function AdminDashboard() {
                                 </div>
                                 <div>
                                     <p className="text-2xl font-bold">
-                                        {courses.filter(c => c.status === 'published').length}
+                                        {analyticsLoading ? '—' : (courseAnalytics?.published ?? 0)}
                                     </p>
                                     <p className="text-sm text-muted-foreground">Published</p>
                                 </div>
@@ -129,7 +163,7 @@ export default function AdminDashboard() {
                                 </div>
                                 <div>
                                     <p className="text-2xl font-bold">
-                                        {courses.filter(c => c.status === 'draft').length}
+                                        {analyticsLoading ? '—' : (courseAnalytics?.draft ?? 0)}
                                     </p>
                                     <p className="text-sm text-muted-foreground">Drafts</p>
                                 </div>
@@ -144,7 +178,7 @@ export default function AdminDashboard() {
                                 </div>
                                 <div>
                                     <p className="text-2xl font-bold">
-                                        {courses.reduce((sum, c) => sum + (c.total_enrollments || 0), 0)}
+                                        {analyticsLoading ? '—' : (overview?.total_enrollments ?? 0)}
                                     </p>
                                     <p className="text-sm text-muted-foreground">Total Enrollments</p>
                                 </div>
@@ -152,6 +186,29 @@ export default function AdminDashboard() {
                         </CardContent>
                     </Card>
                 </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                    <Card><CardHeader><CardTitle className="text-base">Learners</CardTitle></CardHeader><CardContent>
+                        <p className="text-3xl font-bold">{analyticsLoading ? '—' : (overview?.total_students ?? 0)}</p>
+                        <p className="text-sm text-muted-foreground">{userAnalytics ? `${userAnalytics.active_users.this_week} active this week` : 'Live platform count'}</p>
+                    </CardContent></Card>
+                    <Card><CardHeader><CardTitle className="text-base">Completion rate</CardTitle></CardHeader><CardContent>
+                        <p className="text-3xl font-bold">{analyticsLoading ? '—' : `${overview?.average_completion_rate ?? 0}%`}</p>
+                        <p className="text-sm text-muted-foreground">Completed enrollments / eligible enrollments</p>
+                    </CardContent></Card>
+                    <Card><CardHeader><CardTitle className="text-base">New this week</CardTitle></CardHeader><CardContent>
+                        <p className="text-3xl font-bold">{analyticsLoading ? '—' : (overview?.new_users_this_week ?? 0)}</p>
+                        <p className="text-sm text-muted-foreground">New learner accounts</p>
+                    </CardContent></Card>
+                </div>
+
+                {courseAnalytics && courseAnalytics.top_courses.length > 0 && (
+                    <Card className="mb-8"><CardHeader><CardTitle>Most enrolled courses</CardTitle><CardDescription>Live enrollment totals from the backend</CardDescription></CardHeader>
+                        <CardContent><div className="space-y-3">{courseAnalytics.top_courses.slice(0, 5).map((course) => (
+                            <div key={course.course_id} className="flex items-center justify-between border-b pb-2 last:border-0"><span className="truncate pr-4">{course.title}</span><Badge variant="secondary">{course.enrollments} enrolled</Badge></div>
+                        ))}</div></CardContent>
+                    </Card>
+                )}
 
                 {/* Course Management */}
                 <Card>
