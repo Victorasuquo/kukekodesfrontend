@@ -4,19 +4,18 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { Loader2, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Progress } from '@/components/ui/progress';
 
 interface QuizProps {
-    quizId: number;
+    quizId: string;
     onComplete?: () => void;
 }
 
 export function Quiz({ quizId, onComplete }: QuizProps) {
     const [quiz, setQuiz] = useState<APIQuiz | null>(null);
     const [loading, setLoading] = useState(true);
-    const [answers, setAnswers] = useState<Record<number, number>>({});
+    const [answers, setAnswers] = useState<Record<string, string>>({});
     const [submitted, setSubmitted] = useState(false);
     const [score, setScore] = useState(0);
     const [passed, setPassed] = useState(false);
@@ -39,7 +38,7 @@ export function Quiz({ quizId, onComplete }: QuizProps) {
         fetchQuiz();
     }, [quizId, toast]);
 
-    const handleOptionSelect = (questionId: number, answerId: number) => {
+    const handleOptionSelect = (questionId: string, answerId: string) => {
         if (submitted) return;
         setAnswers(prev => ({ ...prev, [questionId]: answerId }));
     };
@@ -47,36 +46,20 @@ export function Quiz({ quizId, onComplete }: QuizProps) {
     const handleSubmit = async () => {
         if (!quiz || !quiz.questions) return;
 
-        // Calculate local score for immediate feedback
-        let correctCount = 0;
-        const totalQuestions = quiz.questions.length;
-
-        quiz.questions.forEach(q => {
-            const selectedAnswerId = answers[q.id];
-            const correctAnswer = q.answers?.find(a => a.is_correct);
-            if (correctAnswer && selectedAnswerId === correctAnswer.id) {
-                correctCount++;
-            }
-        });
-
-        const calculatedScore = (correctCount / totalQuestions) * 100;
-        setScore(calculatedScore);
-        const isPassed = calculatedScore >= quiz.passing_score;
-        setPassed(isPassed);
-        setSubmitted(true);
-
-        // Submit to backend
         try {
-            await api.submitQuizAttempt(quizId, answers);
-            if (isPassed) {
-                toast({ title: 'Quiz Passed! 🎉', description: `You scored ${Math.round(calculatedScore)}%` });
+            const result = await api.submitQuizAttempt(quizId, answers);
+            setScore(result.score);
+            setPassed(result.passed);
+            setSubmitted(true);
+            if (result.passed) {
+                toast({ title: 'Quiz passed', description: `You scored ${Math.round(result.score)}%` });
                 if (onComplete) onComplete();
             } else {
-                toast({ title: 'Quiz Failed', description: `You scored ${Math.round(calculatedScore)}%. Try again!`, variant: 'destructive' });
+                toast({ title: 'Quiz not passed', description: `You scored ${Math.round(result.score)}%. Review the lesson and try again.`, variant: 'destructive' });
             }
         } catch (error) {
             console.error("Failed to submit quiz attempt:", error);
-            // Even if backend fails, we showed local results
+            toast({ title: 'Submission failed', description: error instanceof Error ? error.message : 'Your answers were not recorded.', variant: 'destructive' });
         }
     };
 
@@ -115,20 +98,14 @@ export function Quiz({ quizId, onComplete }: QuizProps) {
                     <CardContent>
                         <RadioGroup
                             value={answers[question.id]?.toString()}
-                            onValueChange={(val) => handleOptionSelect(question.id, parseInt(val))}
+                            onValueChange={(val) => handleOptionSelect(question.id, val)}
                         >
                             <div className="space-y-3">
                                 {question.answers?.map((answer) => {
                                     const isSelected = answers[question.id] === answer.id;
                                     let itemStyle = "flex items-center space-x-3 space-y-0 rounded-md border p-4 cursor-pointer transition-colors hover:bg-accent/50";
 
-                                    if (submitted) {
-                                        if (answer.is_correct) {
-                                            itemStyle += " border-green-500 bg-green-500/10";
-                                        } else if (isSelected && !answer.is_correct) {
-                                            itemStyle += " border-red-500 bg-red-500/10";
-                                        }
-                                    } else if (isSelected) {
+                                    if (!submitted && isSelected) {
                                         itemStyle += " border-primary bg-primary/5";
                                     }
 
@@ -140,8 +117,7 @@ export function Quiz({ quizId, onComplete }: QuizProps) {
                                                     {answer.answer_text}
                                                 </Label>
                                             </div>
-                                            {submitted && answer.is_correct && <CheckCircle className="w-5 h-5 text-green-500" />}
-                                            {submitted && isSelected && !answer.is_correct && <XCircle className="w-5 h-5 text-red-500" />}
+                                            {submitted && isSelected && (passed ? <CheckCircle className="w-5 h-5 text-green-500" /> : <XCircle className="w-5 h-5 text-red-500" />)}
                                         </div>
                                     );
                                 })}

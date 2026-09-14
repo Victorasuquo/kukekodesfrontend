@@ -4,7 +4,7 @@ import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { useAuth } from '@/contexts/AuthContext';
 import api from '@/services/api';
-import type { Course } from '@/services/api';
+import type { Course, ProgressDashboard } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +27,7 @@ export default function Dashboard() {
     const navigate = useNavigate();
     const [courses, setCourses] = useState<Course[]>([]);
     const [loading, setLoading] = useState(true);
+    const [progressDashboard, setProgressDashboard] = useState<ProgressDashboard | null>(null);
 
     useEffect(() => {
         if (!user) {
@@ -36,8 +37,12 @@ export default function Dashboard() {
 
         const fetchCourses = async () => {
             try {
-                const response = await api.getCourses({ page_size: 6 });
+                const [response, progress] = await Promise.all([
+                    api.getCourses({ page_size: 6 }),
+                    api.getProgressDashboard(),
+                ]);
                 setCourses(response?.data || []);
+                setProgressDashboard(progress);
             } catch (error) {
                 console.error('Failed to fetch courses', error);
                 setCourses([]);
@@ -121,7 +126,7 @@ export default function Dashboard() {
                                     <Target className="w-6 h-6 text-secondary" />
                                 </div>
                                 <div>
-                                    <p className="text-2xl font-bold">0</p>
+                                    <p className="text-2xl font-bold">{progressDashboard?.statistics.total_courses_enrolled || 0}</p>
                                     <p className="text-sm text-muted-foreground">Enrolled</p>
                                 </div>
                             </div>
@@ -134,7 +139,7 @@ export default function Dashboard() {
                                     <TrendingUp className="w-6 h-6 text-accent" />
                                 </div>
                                 <div>
-                                    <p className="text-2xl font-bold">0</p>
+                                    <p className="text-2xl font-bold">{Math.max(0, (progressDashboard?.statistics.total_courses_enrolled || 0) - (progressDashboard?.statistics.total_courses_completed || 0))}</p>
                                     <p className="text-sm text-muted-foreground">In Progress</p>
                                 </div>
                             </div>
@@ -147,7 +152,7 @@ export default function Dashboard() {
                                     <Award className="w-6 h-6 text-green-500" />
                                 </div>
                                 <div>
-                                    <p className="text-2xl font-bold">0</p>
+                                    <p className="text-2xl font-bold">{progressDashboard?.statistics.total_courses_completed || 0}</p>
                                     <p className="text-sm text-muted-foreground">Completed</p>
                                 </div>
                             </div>

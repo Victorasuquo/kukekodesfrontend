@@ -175,22 +175,24 @@ export interface APIUserProgress {
   progress_percentage: number;
   is_completed: boolean;
   completed_at?: string | null;
+  resume_position_seconds?: number;
 }
 
 export interface APIQuizAnswer {
-  id: number;
+  id: string;
   answer_text: string;
   is_correct?: boolean;
 }
 
 export interface APIQuizQuestion {
-  id: number;
+  id: string;
   question_text: string;
   answers: APIQuizAnswer[];
 }
 
 export interface APIQuiz {
-  id: number;
+  id: string;
+  course_id: string;
   title: string;
   passing_score: number;
   questions: APIQuizQuestion[];
@@ -199,9 +201,84 @@ export interface APIQuiz {
 export interface APICertificate {
   id: string;
   certificate_id: string;
-  course: string;
-  issued_date: string;
+  verification_code: string;
+  course_id: string;
+  course_title: string;
+  issued_at: string;
+  is_revoked?: boolean;
   download_url?: string | null;
+}
+
+export interface Enrollment {
+  id: string;
+  user_id: string;
+  course_id: string;
+  status?: 'active' | 'completed' | 'withdrawn';
+  completion_percentage: number;
+  is_completed: boolean;
+  enrolled_at: string;
+  completed_at?: string | null;
+  course_title?: string;
+  course_cover_url?: string | null;
+}
+
+export interface LessonProgressItem {
+  id?: string;
+  lesson_id?: string;
+  is_completed: boolean;
+  progress_percentage?: number;
+}
+
+export interface CourseProgress {
+  course_id: string;
+  course_title?: string;
+  completion_percentage: number;
+  completed_lessons: number;
+  total_lessons: number;
+  is_completed: boolean;
+  modules?: Array<{ module_id: string; title?: string; lessons?: LessonProgressItem[] }>;
+}
+
+export interface ProgressDashboard {
+  statistics: {
+    total_courses_enrolled: number;
+    total_courses_completed: number;
+    total_lessons_completed: number;
+    total_time_spent_hours: number;
+    badges_earned: number;
+  };
+  enrolled_courses?: Array<{
+    course_id: string;
+    course_title: string;
+    cover_image_url?: string | null;
+    completion_percentage: number;
+    is_completed: boolean;
+    enrolled_at: string;
+  }>;
+}
+
+export interface QuizAttemptResult {
+  id: string;
+  quiz_id: string;
+  score: number;
+  passed: boolean;
+  correct_count: number;
+  total_questions: number;
+  submitted_at: string;
+  certificate_available?: boolean;
+}
+
+export interface CoursePreview {
+  course_id: string;
+  is_publishable: boolean;
+  validation_errors: string[];
+}
+
+export interface CoursePublishResponse {
+  course_id: string;
+  status: string;
+  published_at?: string | null;
+  message?: string;
 }
 
 export interface LiveSession {
@@ -565,6 +642,15 @@ class APIService {
     return this.request<PaginatedResponse<Course>>(`/courses${query}`, {}, false);
   }
 
+  async getAdminCourses(params?: { page?: number; page_size?: number; search?: string }): Promise<PaginatedResponse<Course>> {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', String(params.page));
+    if (params?.page_size) queryParams.append('page_size', String(params.page_size));
+    if (params?.search) queryParams.append('search', params.search);
+    const query = queryParams.toString() ? `?${queryParams.toString()}` : '';
+    return this.request<PaginatedResponse<Course>>(`/admin/courses${query}`);
+  }
+
   async getCourse(id: string): Promise<Course> {
     return this.request<Course>(`/courses/${id}`, {}, false);
   }
@@ -594,8 +680,12 @@ class APIService {
     return this.request<{ success: boolean; message: string }>(`/courses/${id}`, { method: 'DELETE' });
   }
 
-  async publishCourse(id: string): Promise<Course> {
-    return this.request<Course>(`/courses/${id}/publish`, { method: 'POST' });
+  async getCoursePreview(id: string): Promise<CoursePreview> {
+    return this.request<CoursePreview>(`/courses/${id}/preview`);
+  }
+
+  async publishCourse(id: string): Promise<CoursePublishResponse> {
+    return this.request<CoursePublishResponse>(`/courses/${id}/publish`, { method: 'POST' });
   }
 
   // ---------------------------------------------------------------------------
@@ -640,6 +730,9 @@ class APIService {
     title: string;
     description: string;
     youtube_url?: string;
+    duration_minutes?: number;
+    transcript?: string;
+    resources?: Record<string, string>;
     order: number;
   }): Promise<Lesson> {
     return this.request<Lesson>('/lessons', {
@@ -670,18 +763,84 @@ class APIService {
     });
   }
 
-  async getQuiz(quizId: number): Promise<APIQuiz> {
+  async getQuiz(quizId: string): Promise<APIQuiz> {
     return this.request<APIQuiz>(`/quizzes/${quizId}`);
   }
 
   async submitQuizAttempt(
-    quizId: number,
-    answers: Record<number, number>
-  ): Promise<APIUserProgress> {
-    return this.request<APIUserProgress>(`/quizzes/${quizId}/attempts`, {
+    quizId: string,
+    answers: Record<string, string>
+  ): Promise<QuizAttemptResult> {
+    return this.request<QuizAttemptResult>(`/quizzes/${quizId}/attempts`, {
       method: 'POST',
       body: { answers } as unknown as BodyInit,
     });
+  }
+
+  async listCourseQuizzes(courseId: string): Promise<APIQuiz[]> {
+    const response = await this.request<APIQuiz[] | { data: APIQuiz[] }>(`/quizzes/course/${encodeURIComponent(courseId)}`);
+    return Array.isArray(response) ? response : response.data;
+  }
+
+  async createQuiz(data: {
+    course_id: string;
+    title: string;
+    passing_score: number;
+    questions: Array<{ question_text: string; answers: Array<{ answer_text: string; is_correct: boolean }> }>;
+  }): Promise<APIQuiz> {
+    return this.request<APIQuiz>('/quizzes', { method: 'POST', body: data as unknown as BodyInit });
+  }
+
+  async enrollCourse(courseId: string): Promise<Enrollment> {
+    return this.request<Enrollment>('/enrollments', {
+      method: 'POST',
+      body: { course_id: courseId } as unknown as BodyInit,
+    });
+  }
+
+  async checkEnrollment(courseId: string): Promise<{ course_id: string; is_enrolled: boolean; enrollment?: Enrollment }> {
+    return this.request(`/enrollments/check/${courseId}`);
+  }
+
+  async getMyEnrollments(params?: { page?: number; page_size?: number }): Promise<PaginatedResponse<Enrollment>> {
+    const query = new URLSearchParams();
+    if (params?.page) query.set('page', String(params.page));
+    if (params?.page_size) query.set('page_size', String(params.page_size));
+    return this.request<PaginatedResponse<Enrollment>>(`/enrollments/my-enrollments${query.size ? `?${query}` : ''}`);
+  }
+
+  async getCourseProgress(courseId: string): Promise<CourseProgress> {
+    return this.request<CourseProgress>(`/progress/course/${courseId}`);
+  }
+
+  async markLessonComplete(lessonId: string, timeSpentMinutes = 0): Promise<APIUserProgress> {
+    return this.request<APIUserProgress>(`/progress/mark-lesson-complete/${lessonId}`, {
+      method: 'POST',
+      body: { time_spent_minutes: timeSpentMinutes } as unknown as BodyInit,
+    });
+  }
+
+  async getLessonProgress(lessonId: string): Promise<APIUserProgress> {
+    return this.request<APIUserProgress>(`/progress/lesson/${lessonId}`);
+  }
+
+  async syncLessonPosition(lessonId: string, positionSeconds: number, timeSpentMinutes = 0): Promise<APIUserProgress> {
+    return this.request<APIUserProgress>(`/progress/lesson/${lessonId}/position`, {
+      method: 'PUT',
+      body: {
+        position_seconds: positionSeconds,
+        time_spent_minutes: timeSpentMinutes,
+        idempotency_key: crypto.randomUUID(),
+      } as unknown as BodyInit,
+    });
+  }
+
+  async getProgressDashboard(): Promise<ProgressDashboard> {
+    return this.request<ProgressDashboard>('/progress/user/dashboard');
+  }
+
+  async getCourseCertificate(courseId: string): Promise<APICertificate> {
+    return this.request<APICertificate>(`/progress/certificate/${courseId}`);
   }
 
   async runCode(code: string, lessonId: number): Promise<{ submission_id: number }> {
@@ -698,8 +857,8 @@ class APIService {
   }
 
   async getCertificates(): Promise<APICertificate[]> {
-    const response = await this.request<APICertificate[] | PaginatedResponse<APICertificate>>('/certificates');
-    return Array.isArray(response) ? response : response.data;
+    const response = await this.request<APICertificate[] | { certificates: APICertificate[] }>('/progress/certificates');
+    return Array.isArray(response) ? response : response.certificates;
   }
 
   async getLiveSessions(): Promise<LiveSession[]> {

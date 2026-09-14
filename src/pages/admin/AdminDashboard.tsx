@@ -34,7 +34,7 @@ export default function AdminDashboard() {
 
         const fetchCourses = async () => {
             try {
-                const response = await api.getCourses({ page_size: 50 });
+                const response = await api.getAdminCourses({ page_size: 50 });
                 setCourses(response?.data || []);
             } catch (error) {
                 console.error('Failed to fetch courses', error);

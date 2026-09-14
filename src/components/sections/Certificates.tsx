@@ -37,13 +37,11 @@ export function Certificates() {
     }, []);
 
     const handleDownload = (cert: APICertificate) => {
-        toast({ title: 'Downloading...', description: 'Generating your certificate file.' });
-        // In a real app, this would hit a download endpoint. 
-        // For now, we simulate it or maybe the backend has a PDF view? 
-        // The docs don't specify a PDF download endpoint, only the certificate detail.
-        // We'll just show a "Coming Soon" or open the print view of a certificate page if we had one.
-        // Let's assume there's a URL we can construct or just alert.
-        alert(`Downloading certificate: ${cert.certificate_id}`);
+        if (!cert.download_url) {
+            toast({ title: 'Download unavailable', description: 'This certificate does not have a generated file yet.', variant: 'destructive' });
+            return;
+        }
+        window.open(cert.download_url, '_blank', 'noopener,noreferrer');
     };
 
     if (loading) {
@@ -63,13 +61,13 @@ export function Certificates() {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {certificates.map(cert => {
-                const course = courses[cert.course];
+                const course = courses[cert.course_id];
                 return (
                     <Card key={cert.id} className="border-primary/20 bg-card/50">
                         <CardHeader className="flex flex-row items-start justify-between pb-2">
                             <div>
                                 <CardTitle className="text-lg">{course?.title || 'Unknown Course'}</CardTitle>
-                                <CardDescription>Issued: {format(new Date(cert.issued_date), 'PPP')}</CardDescription>
+                                <CardDescription>Issued: {format(new Date(cert.issued_at), 'PPP')}</CardDescription>
                             </div>
                             <Award className="w-8 h-8 text-yellow-500" />
                         </CardHeader>
