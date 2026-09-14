@@ -27,6 +27,8 @@ export function Quiz({ quizId, onComplete }: QuizProps) {
             try {
                 const data = await api.getQuiz(quizId);
                 setQuiz(data);
+                const latest = await api.getLatestQuizAttempt(quizId);
+                if (latest) { setAnswers(latest.answers || {}); setScore(latest.score); setPassed(latest.passed); setSubmitted(true); }
             } catch (error) {
                 console.error("Failed to fetch quiz:", error);
                 toast({ title: 'Error', description: 'Failed to load quiz', variant: 'destructive' });

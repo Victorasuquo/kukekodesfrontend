@@ -816,6 +816,9 @@ class APIService {
       body: { answers } as unknown as BodyInit,
     });
   }
+  async getLatestQuizAttempt(quizId: string): Promise<(QuizAttemptResult & { answers?: Record<string, string> }) | null> {
+    return this.request(`\/quizzes\/${quizId}\/attempts\/latest`);
+  }
 
   async listCourseQuizzes(courseId: string): Promise<APIQuiz[]> {
     const response = await this.request<APIQuiz[] | { data: APIQuiz[] }>(`/quizzes/course/${encodeURIComponent(courseId)}`);
