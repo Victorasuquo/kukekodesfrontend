@@ -21,7 +21,7 @@ const AdminLogin = lazy(() => import("./pages/admin/AdminLogin"));
 const AdminOrganizations = lazy(() => import("./pages/admin/AdminOrganizations"));
 const Accountability = lazy(() => import("./pages/Accountability"));
 const AccountabilityChat = lazy(() => import("./pages/AccountabilityChat"));
-import { RequirePlatformAdmin, RequireSession } from "@/components/auth/RouteGuards";
+import { RequirePlatformAdmin, RequireSession, RequireOrganizationRole } from "@/components/auth/RouteGuards";
 import "./App.css";
 
 const queryClient = new QueryClient({
@@ -63,6 +63,7 @@ const App = () => (
                 <Route path="/admin/courses/new" element={<CourseEditor />} />
                 <Route path="/admin/courses/:courseId" element={<CourseEditor />} />
               </Route>
+              <Route element={<RequireOrganizationRole />}><Route path="/organization" element={<AdminOrganizations />} /></Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
             </Suspense>

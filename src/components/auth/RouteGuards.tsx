@@ -29,5 +29,10 @@ export function RequirePlatformAdmin() {
 }
 
 export function RequireOrganizationRole() {
-  return <RequireSession />;
+  const { user, isLoading } = useAuth();
+  if (isLoading) return <SessionLoading />;
+  if (!user) return <Navigate to="/auth" replace />;
+  const canManage = user.role === 'admin' || user.memberships.some((membership) => ['owner', 'admin'].includes(membership.role));
+  if (!canManage) return <Navigate to="/dashboard" replace />;
+  return <Outlet />;
 }
