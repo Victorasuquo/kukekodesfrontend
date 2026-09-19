@@ -1,6 +1,7 @@
 // FastAPI Backend API Service
 
 import { logger } from '@/lib/logger';
+import { queueProgress, getQueuedProgress, clearQueuedProgress } from '@/lib/offlineProgress';
 
 // =============================================================================
 // CONFIGURATION
@@ -196,6 +197,8 @@ export interface AdminEmailHealth {
   webhook_configured: boolean;
   status: string;
 }
+export interface AccountabilityStatus { status: 'not_queued'|'waiting'|'active'|'matched'|'left'; queued_at?: string | null; message?: string; cluster?: { id: string; name: string; capacity: number; created_at: string } }
+export interface AccountabilityCluster { id: string; name: string; capacity: number; members: Array<{ id: string; display_name: string }> }
 
 export interface APIError {
   code: string;
@@ -741,6 +744,11 @@ class APIService {
     return this.request<AdminEmailHealth>('/admin/email/health');
   }
 
+  async getAccountabilityStatus(): Promise<AccountabilityStatus> { return this.request<AccountabilityStatus>('/accountability/status'); }
+  async joinAccountabilityQueue(): Promise<AccountabilityStatus> { return this.request<AccountabilityStatus>('/accountability/queue', { method: 'POST' }); }
+  async leaveAccountability(): Promise<{ status: string }> { return this.request<{ status: string }>('/accountability/leave', { method: 'POST' }); }
+  async getAccountabilityCluster(): Promise<AccountabilityCluster> { return this.request<AccountabilityCluster>('/accountability/cluster'); }
+
   async getCourse(id: string): Promise<Course> {
     return this.request<Course>(`/courses/${id}`, {}, false);
   }
@@ -922,14 +930,34 @@ class APIService {
   }
 
   async syncLessonPosition(lessonId: string, positionSeconds: number, timeSpentMinutes = 0): Promise<APIUserProgress> {
-    return this.request<APIUserProgress>(`/progress/lesson/${lessonId}/position`, {
+    const idempotencyKey = crypto.randomUUID();
+    try {
+      const result = await this.request<APIUserProgress>(`/progress/lesson/${lessonId}/position`, {
       method: 'PUT',
       body: {
         position_seconds: positionSeconds,
         time_spent_minutes: timeSpentMinutes,
-        idempotency_key: crypto.randomUUID(),
+        idempotency_key: idempotencyKey,
       } as unknown as BodyInit,
-    });
+      });
+      return result;
+    } catch (error) {
+      if (!navigator.onLine || error instanceof TypeError) {
+        queueProgress({ lessonId, positionSeconds, timeSpentMinutes, idempotencyKey });
+      }
+      throw error;
+    }
+  }
+
+  async flushOfflineProgress(): Promise<number> {
+    let flushed = 0;
+    for (const item of getQueuedProgress()) {
+      try {
+        await this.request(`/progress/lesson/${item.lessonId}/position`, { method: 'PUT', body: { position_seconds: item.positionSeconds, time_spent_minutes: item.timeSpentMinutes, idempotency_key: item.idempotencyKey } as unknown as BodyInit });
+        clearQueuedProgress(item.idempotencyKey); flushed += 1;
+      } catch { break; }
+    }
+    return flushed;
   }
 
   async getProgressDashboard(): Promise<ProgressDashboard> {
