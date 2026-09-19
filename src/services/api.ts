@@ -697,6 +697,9 @@ class APIService {
     });
   }
   async listOrganizationAssignments(organizationId: string): Promise<Array<{ id: string; course_id: string; cohort_id?: string | null; user_id?: string | null; due_at?: string | null; state: string }>> { return this.request(`/organizations/${organizationId}/assignments`); }
+  async getOrganizationAnalytics(organizationId: string): Promise<{ members: number; assignments: number; enrollments: number; completed_enrollments: number; completion_rate: number }> { return this.request(`/organizations/${organizationId}/analytics`); }
+  async createOrganizationAssignment(organizationId: string, data: { course_id: string; cohort_id?: string; user_id?: string; due_at?: string }): Promise<unknown> { return this.request(`/organizations/${organizationId}/assignments`, { method: 'POST', body: data as unknown as BodyInit }); }
+  async updateOrganizationSettings(organizationId: string, data: { timezone?: string; branding?: Record<string,string> }): Promise<unknown> { return this.request(`/organizations/${organizationId}/settings`, { method: 'PUT', body: data as unknown as BodyInit }); }
 
   // ---------------------------------------------------------------------------
   // Courses Endpoints

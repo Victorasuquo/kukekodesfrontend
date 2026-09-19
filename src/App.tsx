@@ -22,6 +22,7 @@ const AdminOrganizations = lazy(() => import("./pages/admin/AdminOrganizations")
 const Accountability = lazy(() => import("./pages/Accountability"));
 const AccountabilityChat = lazy(() => import("./pages/AccountabilityChat"));
 const AccountabilitySettings = lazy(() => import("./pages/AccountabilitySettings"));
+const OrganizationPortal = lazy(() => import("./pages/OrganizationPortal"));
 import { RequirePlatformAdmin, RequireSession, RequireOrganizationRole } from "@/components/auth/RouteGuards";
 import "./App.css";
 
@@ -65,7 +66,7 @@ const App = () => (
                 <Route path="/admin/courses/new" element={<CourseEditor />} />
                 <Route path="/admin/courses/:courseId" element={<CourseEditor />} />
               </Route>
-              <Route element={<RequireOrganizationRole />}><Route path="/organization" element={<AdminOrganizations />} /></Route>
+              <Route element={<RequireOrganizationRole />}><Route path="/organization" element={<OrganizationPortal />} /><Route path="/organization/manage" element={<AdminOrganizations />} /></Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
             </Suspense>
