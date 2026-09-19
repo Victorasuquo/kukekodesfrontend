@@ -748,6 +748,8 @@ class APIService {
   async joinAccountabilityQueue(): Promise<AccountabilityStatus> { return this.request<AccountabilityStatus>('/accountability/queue', { method: 'POST' }); }
   async leaveAccountability(): Promise<{ status: string }> { return this.request<{ status: string }>('/accountability/leave', { method: 'POST' }); }
   async getAccountabilityCluster(): Promise<AccountabilityCluster> { return this.request<AccountabilityCluster>('/accountability/cluster'); }
+  async getAccountabilityMessages(): Promise<{ data: Array<{ id: string; user_id: string; content: string; created_at: string }> }> { return this.request('/accountability/chat/messages'); }
+  async sendAccountabilityMessage(content: string): Promise<{ id: string; user_id: string; content: string; created_at: string }> { return this.request('/accountability/chat/messages', { method: 'POST', body: { content } as unknown as BodyInit }); }
 
   async getCourse(id: string): Promise<Course> {
     return this.request<Course>(`/courses/${id}`, {}, false);
