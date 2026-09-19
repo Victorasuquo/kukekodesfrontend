@@ -696,6 +696,7 @@ class APIService {
       body: { name: data.name, description: data.description || null } as unknown as BodyInit,
     });
   }
+  async listOrganizationAssignments(organizationId: string): Promise<Array<{ id: string; course_id: string; cohort_id?: string | null; user_id?: string | null; due_at?: string | null; state: string }>> { return this.request(`/organizations/${organizationId}/assignments`); }
 
   // ---------------------------------------------------------------------------
   // Courses Endpoints
@@ -751,6 +752,10 @@ class APIService {
   async getAccountabilityProgress(): Promise<{ data: Array<{ display_name: string; completed_lessons: number; current_streak: number; last_active_date?: string | null }> }> { return this.request('/accountability/cluster/progress'); }
   async getAccountabilityMessages(): Promise<{ data: Array<{ id: string; user_id: string; content: string; created_at: string }> }> { return this.request('/accountability/chat/messages'); }
   async sendAccountabilityMessage(content: string): Promise<{ id: string; user_id: string; content: string; created_at: string }> { return this.request('/accountability/chat/messages', { method: 'POST', body: { content } as unknown as BodyInit }); }
+  async markAccountabilityRead(): Promise<void> { await this.request('/accountability/chat/read', { method: 'POST' }); }
+  async editAccountabilityMessage(id: string, content: string): Promise<void> { await this.request(`/accountability/chat/messages/${id}`, { method: 'PATCH', body: { content } as unknown as BodyInit }); }
+  async deleteAccountabilityMessage(id: string): Promise<void> { await this.request(`/accountability/chat/messages/${id}`, { method: 'DELETE' }); }
+  async reportAccountabilityMessage(id: string, reason: string): Promise<void> { await this.request(`/accountability/chat/messages/${id}/report`, { method: 'POST', body: { reason } as unknown as BodyInit }); }
 
   async getCourse(id: string): Promise<Course> {
     return this.request<Course>(`/courses/${id}`, {}, false);
