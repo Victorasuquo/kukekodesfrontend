@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { CourseCardSkeleton } from '@/components/ui/card-skeleton';
 import {
     BookOpen, Clock, Play, ArrowRight, Award, Target,
-    TrendingUp, Calendar, Settings, LogOut
+    TrendingUp, Calendar, Settings, LogOut, Users
 } from 'lucide-react';
 import coursePython from '@/assets/course-python.jpg';
 
@@ -231,7 +231,7 @@ export default function Dashboard() {
                 </div>
 
                 {/* Quick Actions */}
-                <div className="grid md:grid-cols-3 gap-4">
+                <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-4">
                     <Card className="hover:border-primary/50 transition-colors cursor-pointer" onClick={() => navigate('/courses')}>
                         <CardContent className="p-6 flex items-center gap-4">
                             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -265,6 +265,18 @@ export default function Dashboard() {
                             </div>
                         </CardContent>
                     </Card>
+                    <Card className="hover:border-primary/50 transition-colors cursor-pointer" onClick={() => navigate('/accountability')}>
+                        <CardContent className="p-6 flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center"><Users className="w-6 h-6 text-emerald-600" /></div>
+                            <div><h3 className="font-semibold">Accountability</h3><p className="text-sm text-muted-foreground">Stay on track with your group</p></div>
+                        </CardContent>
+                    </Card>
+                    {user.memberships.length > 0 && <Card className="hover:border-primary/50 transition-colors cursor-pointer" onClick={() => navigate('/organization')}>
+                        <CardContent className="p-6 flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-violet-500/10 flex items-center justify-center"><Users className="w-6 h-6 text-violet-600" /></div>
+                            <div><h3 className="font-semibold">My organization</h3><p className="text-sm text-muted-foreground">Open your tenant portal</p></div>
+                        </CardContent>
+                    </Card>}
                 </div>
             </main>
 
