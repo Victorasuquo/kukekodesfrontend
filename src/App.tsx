@@ -21,6 +21,7 @@ const AdminLogin = lazy(() => import("./pages/admin/AdminLogin"));
 const AdminOrganizations = lazy(() => import("./pages/admin/AdminOrganizations"));
 const Accountability = lazy(() => import("./pages/Accountability"));
 const AccountabilityChat = lazy(() => import("./pages/AccountabilityChat"));
+const AccountabilitySettings = lazy(() => import("./pages/AccountabilitySettings"));
 import { RequirePlatformAdmin, RequireSession, RequireOrganizationRole } from "@/components/auth/RouteGuards";
 import "./App.css";
 
@@ -56,6 +57,7 @@ const App = () => (
               <Route path="/community" element={<ForumPage />} />
               <Route element={<RequireSession />}><Route path="/accountability" element={<Accountability />} /></Route>
               <Route element={<RequireSession />}><Route path="/accountability/chat" element={<AccountabilityChat />} /></Route>
+              <Route element={<RequireSession />}><Route path="/accountability/settings" element={<AccountabilitySettings />} /></Route>
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route element={<RequirePlatformAdmin />}>
                 <Route path="/admin" element={<AdminDashboard />} />

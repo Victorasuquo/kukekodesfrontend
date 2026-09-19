@@ -750,6 +750,8 @@ class APIService {
   async leaveAccountability(): Promise<{ status: string }> { return this.request<{ status: string }>('/accountability/leave', { method: 'POST' }); }
   async getAccountabilityCluster(): Promise<AccountabilityCluster> { return this.request<AccountabilityCluster>('/accountability/cluster'); }
   async getAccountabilityProgress(): Promise<{ data: Array<{ display_name: string; completed_lessons: number; current_streak: number; last_active_date?: string | null }> }> { return this.request('/accountability/cluster/progress'); }
+  async getNotificationPreferences(): Promise<Record<string, boolean | string>> { return this.request('/notifications/preferences/me'); }
+  async updateNotificationPreferences(data: Record<string, boolean | string>): Promise<Record<string, boolean | string>> { return this.request('/notifications/preferences/me', { method: 'PUT', body: data as unknown as BodyInit }); }
   async getAccountabilityMessages(): Promise<{ data: Array<{ id: string; user_id: string; content: string; created_at: string }> }> { return this.request('/accountability/chat/messages'); }
   async sendAccountabilityMessage(content: string): Promise<{ id: string; user_id: string; content: string; created_at: string }> { return this.request('/accountability/chat/messages', { method: 'POST', body: { content } as unknown as BodyInit }); }
   async markAccountabilityRead(): Promise<void> { await this.request('/accountability/chat/read', { method: 'POST' }); }
